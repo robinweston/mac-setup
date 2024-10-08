@@ -90,6 +90,7 @@ CASKS=(
     aws-vault
     1password
     grammarly-desktop
+    amazon-q
 )
 
 echo "Installing cask apps..."
