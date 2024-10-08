@@ -45,7 +45,6 @@ function install_zsh_extra() {
 }
 
 install_zsh_extra "https://github.com/zsh-users/zsh-syntax-highlighting.git" "plugins/zsh-syntax-highlighting"
-install_zsh_extra "https://github.com/zsh-users/zsh-autosuggestions.git" "plugins/zsh-autosuggestions"
 install_zsh_extra "https://github.com/romkatv/powerlevel10k.git" "themes/powerlevel10k"
 
 # Homebrew

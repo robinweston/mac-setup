@@ -13,7 +13,7 @@ if [ -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
     ZSH_THEME="powerlevel10k/powerlevel10k"
 fi
 
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git zsh-syntax-highlighting)
 
 source $ZSH/oh-my-zsh.sh
 
