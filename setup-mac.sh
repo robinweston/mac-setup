@@ -241,6 +241,10 @@ defaults write NSGlobalDomain com.apple.sound.beep.volume -float 0.0
 # Disable the boot sound
 sudo nvram StartupMute=%01
 
+# Disable automatically changing brightness
+sudo pmset -b halfdim 0
+sudo pmset -b lessbright 0
+
 echo "Manual tasks"
 echo "============"
 
