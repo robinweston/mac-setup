@@ -67,6 +67,7 @@ PACKAGES=(
     watchman
     awscli
     git-delta
+    ffmpeg
 )
 
 echo "Installing packages..."
