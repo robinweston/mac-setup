@@ -22,3 +22,15 @@ source $ZSH/oh-my-zsh.sh
 
 # Amazon Q post block. Keep at the bottom of this file.
 [[ -f "${HOME}/Library/Application Support/amazon-q/shell/zshrc.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/amazon-q/shell/zshrc.post.zsh"
+
+add_timestamp() {
+  while IFS= read -r line; do
+    echo "$(date '+%H:%M:%S') $line"
+  done
+}
+
+exec_with_timestamp() {
+  "$@" | add_timestamp
+}
+
+alias timestamp='exec_with_timestamp'

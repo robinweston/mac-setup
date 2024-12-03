@@ -91,6 +91,7 @@ CASKS=(
     1password
     grammarly-desktop
     amazon-q
+    sonos
 )
 
 echo "Installing cask apps..."
