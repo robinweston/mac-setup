@@ -68,6 +68,8 @@ PACKAGES=(
     awscli
     git-delta
     ffmpeg
+    uv
+    flyctl
 )
 
 echo "Installing packages..."
@@ -172,7 +174,7 @@ echo "Setting screenshots location"
 mkdir -p "$HOME/Documents/screenshots"
 defaults write com.apple.screencapture location -string "$HOME/Documents/screenshots"
 
-# Disable the “Are you sure you want to open this application?” dialog
+# Disable the "Are you sure you want to open this application?" dialog
 defaults write com.apple.LaunchServices LSQuarantine -bool false
 
 # Disable Notification Center and remove the menu bar icon
@@ -210,13 +212,13 @@ defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 
 # Expand the following File Info panes:
-# “General”, “Open with”, and “Sharing & Permissions”
+# "General", "Open with", and "Sharing & Permissions"
 defaults write com.apple.finder FXInfoPanesExpanded -dict \
 	General -bool true \
 	OpenWith -bool true \
 	Privileges -bool true
 
-# Don’t display the annoying prompt when quitting iTerm
+# Don't display the annoying prompt when quitting iTerm
 defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
 # Use function keys on external keyboard
