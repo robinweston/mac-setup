@@ -70,6 +70,7 @@ PACKAGES=(
     ffmpeg
     uv
     flyctl
+    azure-cli
 )
 
 echo "Installing packages..."
@@ -93,6 +94,7 @@ CASKS=(
     1password
     grammarly-desktop
     sonos
+    cursor
 )
 
 echo "Installing cask apps..."
