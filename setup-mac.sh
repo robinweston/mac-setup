@@ -65,12 +65,12 @@ PACKAGES=(
     nvm
     p7zip
     watchman
-    awscli
     git-delta
     ffmpeg
     uv
     flyctl
     azure-cli
+    slack
 )
 
 echo "Installing packages..."
@@ -83,17 +83,17 @@ reload_shell
 
 CASKS=(
     iterm2
-    brave-browser
     docker
     rectangle
     visual-studio-code
     postman
     spotify
     notunes
-    aws-vault
     1password
     grammarly-desktop
     sonos
+    slack
+    warp
     cursor
 )
 
