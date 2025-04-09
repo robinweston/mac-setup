@@ -1,10 +1,13 @@
+[includeIf "gitdir:~/git/personal/"]
+    path = ~/.gitconfig-personal
+
 [init]
     defaultBranch = main
 
 [user]
     name = Robin Weston
-	email = weston.robin@bcg.com
-    signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFeZHy+TlBWmclEDEg++FHULwcIAh1hu+JEVF0PuDSqJ
+	email = robin.weston@mandai.com
+    signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM5XLp0ReKi/8pD4dbYh98uV7wAqB98nGKI/uDTEcPMw
 
 [core]
     pager = delta
