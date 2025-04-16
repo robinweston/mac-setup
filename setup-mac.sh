@@ -82,7 +82,6 @@ mkdir -p ~/.nvm
 reload_shell
 
 CASKS=(
-    iterm2
     docker
     rectangle
     visual-studio-code
@@ -95,6 +94,12 @@ CASKS=(
     slack
     warp
     cursor
+    brave-browser
+    microsoft-powerpoint
+    microsoft-word
+    microsoft-excel
+    microsoft-teams
+    microsoft-outlook
 )
 
 echo "Installing cask apps..."
