@@ -67,6 +67,7 @@ CASKS=(
     slack
     warp
     cursor
+    zoom
     brave-browser
     microsoft-powerpoint
     microsoft-word
