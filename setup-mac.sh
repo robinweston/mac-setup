@@ -20,33 +20,6 @@ function command_exists()
 echo "Copying dotfiles"
 rsync -av --progress --exclude=.DS_Store ./dotfiles/ ~/
 
-# Check if Oh My Zsh is already installed by looking for the ~/.oh-my-zsh directory
-if [ -d "$HOME/.oh-my-zsh" ]; then
-    echo "Oh My Zsh is already installed."
-else
-    echo "Oh My Zsh is not installed. Installing Oh My Zsh..."
-    
-    # Install Oh My Zsh
-    RUNZSH=no /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-fi
-
-echo "Installing zsh extras"
-function install_zsh_extra() {
-    local repo=$1
-    local dest_dir=${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/$2
-
-    if [ -d "$dest_dir" ]; then
-        echo "$2 is already installed at $dest_dir."
-    else
-        echo "Installing $2..."
-        git clone $repo $dest_dir
-        echo "$2 has been installed successfully."
-    fi
-}
-
-install_zsh_extra "https://github.com/zsh-users/zsh-syntax-highlighting.git" "plugins/zsh-syntax-highlighting"
-install_zsh_extra "https://github.com/romkatv/powerlevel10k.git" "themes/powerlevel10k"
-
 # Homebrew
 if command_exists brew; then
     echo "Homebrew already installed - skipping"
