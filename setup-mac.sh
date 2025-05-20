@@ -58,7 +58,7 @@ CASKS=(
     docker
     rectangle
     visual-studio-code
-    postman
+    insomnia
     spotify
     notunes
     1password
