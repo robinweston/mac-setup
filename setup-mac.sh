@@ -32,18 +32,23 @@ fi
 
 brew update
 
-PACKAGES=(  
+PACKAGES=(
+    azure-cli
+    cmake
+    ffmpeg
+    flyctl
+    gh
     git
-    python3
+    git-delta
     nvm
     p7zip
-    watchman
-    git-delta
-    ffmpeg
+    pkgconf
+    pre-commit
+    qpdf
+    terraform
+    tflint
     uv
-    flyctl
-    azure-cli
-    slack
+    watchman
 )
 
 echo "Installing packages..."
@@ -55,25 +60,31 @@ mkdir -p ~/.nvm
 reload_shell
 
 CASKS=(
-    docker
-    rectangle
-    visual-studio-code
-    insomnia
-    spotify
-    notunes
     1password
-    grammarly-desktop
-    sonos
-    slack
-    warp
-    cursor
-    zoom
     brave-browser
-    microsoft-powerpoint
-    microsoft-word
+    cursor
+    docker
+    docker-desktop
+    google-chrome
+    grammarly-desktop
+    insomnia
+    microsoft-auto-update
     microsoft-excel
-    microsoft-teams
     microsoft-outlook
+    microsoft-powerpoint
+    microsoft-teams
+    microsoft-word
+    nordvpn
+    notunes
+    onedrive
+    rectangle
+    slack
+    sonos
+    spotify
+    visual-studio-code
+    warp
+    whatsapp
+    zoom
 )
 
 echo "Installing cask apps..."
