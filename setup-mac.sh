@@ -34,17 +34,22 @@ brew update
 
 PACKAGES=(
     azure-cli
+    bash
     cmake
+    codex
     ffmpeg
     flyctl
     gh
     git
     git-delta
+    git-lfs
+    huggingface-cli
     nvm
     p7zip
     pkgconf
     pre-commit
     qpdf
+    ripgrep
     terraform
     tflint
     uv
@@ -54,6 +59,18 @@ PACKAGES=(
 echo "Installing packages..."
 brew install ${PACKAGES[@]}
 
+# Install usbi - USB cable checker CLI tool
+echo "Installing usbi (USB cable checker)..."
+if command_exists usbi; then
+    echo "usbi already installed - skipping"
+else
+    echo "Downloading usbi binary..."
+    curl -L -o /tmp/usbi https://raw.githubusercontent.com/kaushikgopal/dotfiles/master/bin/usbi
+    sudo mv /tmp/usbi /usr/local/bin/usbi
+    sudo chmod +x /usr/local/bin/usbi
+    echo "usbi installed successfully"
+fi
+
 # NVM
 mkdir -p ~/.nvm
 
@@ -61,14 +78,20 @@ reload_shell
 
 CASKS=(
     1password
+    blender
     brave-browser
+    comfyui
     cursor
+    cursor-cli
     docker
     docker-desktop
+    flycut
     google-chrome
     grammarly-desktop
     insomnia
+    lulu
     microsoft-auto-update
+    microsoft-edge
     microsoft-excel
     microsoft-outlook
     microsoft-powerpoint
@@ -77,6 +100,7 @@ CASKS=(
     nordvpn
     notunes
     onedrive
+    pareto-security
     rectangle
     slack
     sonos
