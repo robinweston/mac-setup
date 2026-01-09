@@ -71,6 +71,22 @@ else
     echo "usbi installed successfully"
 fi
 
+# Install git-worktree-runner (git gtr)
+echo "Installing git-worktree-runner (git gtr)..."
+if command_exists git-gtr; then
+    echo "git-gtr already installed - skipping"
+else
+    echo "Cloning git-worktree-runner..."
+    GTR_DIR="$HOME/git/personal/git-worktree-runner"
+    if [ ! -d "$GTR_DIR" ]; then
+        mkdir -p "$HOME/git/personal"
+        git clone https://github.com/coderabbitai/git-worktree-runner.git "$GTR_DIR"
+    fi
+    echo "Installing git-gtr..."
+    ln -sf "$GTR_DIR/bin/git-gtr" "$(brew --prefix)/bin/git-gtr"
+    echo "git-gtr installed successfully"
+fi
+
 # NVM
 mkdir -p ~/.nvm
 
