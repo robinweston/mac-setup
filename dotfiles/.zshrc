@@ -1,5 +1,6 @@
 # Aliases
 alias gtr='git gtr'
+alias gtrprune='git gtr clean --merged'
 
 # Function to checkout PR branch using gtr
 gtrpr() {
@@ -19,7 +20,73 @@ gtrpr() {
   fi
   
   echo "Creating worktree for branch: ${branch_name}"
-  gtr new "$branch_name"
+  gtrnew "$branch_name"
+}
+
+# Function to create worktree with auto-behaviors (copy node_modules, cd, open editor)
+gtrnew() {
+  # Extract branch name from arguments (first non-flag argument)
+  local branch_name=""
+  local args=("$@")
+  
+  for arg in "${args[@]}"; do
+    case "$arg" in
+      --*)
+        # Skip flags
+        continue
+        ;;
+      *)
+        # First non-flag argument is the branch name
+        if [ -z "$branch_name" ]; then
+          branch_name="$arg"
+        fi
+        ;;
+    esac
+  done
+  
+  if [ -z "$branch_name" ]; then
+    echo "Error: Branch name required"
+    echo "Usage: gtrnew <branch> [options...]"
+    return 1
+  fi
+  
+  # Create the worktree
+  if ! gtr new "$@"; then
+    echo "Error: Failed to create worktree"
+    return 1
+  fi
+  
+  # Get repo root and worktree path
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  
+  if [ -z "$repo_root" ]; then
+    echo "Error: Not in a git repository"
+    return 1
+  fi
+  
+  local worktree_path
+  worktree_path=$(gtr go "$branch_name" 2>/dev/null)
+  
+  if [ -z "$worktree_path" ] || [ ! -d "$worktree_path" ]; then
+    echo "Error: Could not find worktree path for branch: $branch_name"
+    return 1
+  fi
+  
+  # Copy node_modules if it exists in main repo
+  if [ -d "$repo_root/node_modules" ]; then
+    echo "Copying node_modules..."
+    cp -R "$repo_root/node_modules" "$worktree_path/" 2>/dev/null || echo "Warning: Failed to copy node_modules"
+  fi
+  
+  # Change directory to worktree
+  cd "$worktree_path" || {
+    echo "Warning: Failed to change directory to $worktree_path"
+    return 1
+  }
+  
+  # Open in configured editor
+  gtr editor "$branch_name"
 }
 
 # Automatically switch Node.js version when entering directory with .nvmrc
