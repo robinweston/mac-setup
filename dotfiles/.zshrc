@@ -73,10 +73,12 @@ gtrnew() {
     return 1
   fi
   
-  # Copy node_modules if it exists in main repo
-  if [ -d "$repo_root/node_modules" ]; then
-    echo "Copying node_modules..."
-    cp -R "$repo_root/node_modules" "$worktree_path/" 2>/dev/null || echo "Warning: Failed to copy node_modules"
+  # Clone node_modules if it exists in main repo (fast on APFS via copy-on-write)
+  if [ -d "$repo_root/node_modules" ] && [ ! -e "$worktree_path/node_modules" ]; then
+    echo "Cloning node_modules..."
+    cp -cR "$repo_root/node_modules" "$worktree_path/node_modules" 2>/dev/null || \
+      cp -R "$repo_root/node_modules" "$worktree_path/node_modules" 2>/dev/null || \
+      echo "Warning: Failed to copy node_modules"
   fi
   
   # Change directory to worktree
