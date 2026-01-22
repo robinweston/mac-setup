@@ -1,6 +1,7 @@
 # Aliases
 alias gtr='git gtr'
 alias gtrprune='git gtr clean --merged'
+alias restart-onedrive='killall OneDrive "OneDrive Sync Service" "OneDrive File Provider" Finder && sleep 2 && open /Applications/OneDrive.app && open /System/Library/CoreServices/Finder.app'
 
 # Function to checkout PR branch using gtr
 gtrpr() {
