@@ -1,0 +1,7 @@
+[defaults]
+    editor = cursor
+
+[copy]
+    include = .env
+    includeDirs = node_modules
+

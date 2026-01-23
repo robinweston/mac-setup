@@ -1,6 +1,6 @@
 # Aliases
 alias gtr='git gtr'
-alias gtrprune='git gtr clean --merged'
+alias gtrprune='git gtr clean --merged --yes'
 alias restart-onedrive='killall OneDrive "OneDrive Sync Service" "OneDrive File Provider" Finder && sleep 2 && open /Applications/OneDrive.app && open /System/Library/CoreServices/Finder.app'
 
 # Function to checkout PR branch using gtr
@@ -24,7 +24,8 @@ gtrpr() {
   gtrnew "$branch_name"
 }
 
-# Function to create worktree with auto-behaviors (copy node_modules, cd, open editor)
+# Simplified function to create worktree and cd into it
+# Note: node_modules copying and editor opening are now handled by gtr config hooks
 gtrnew() {
   # Extract branch name from arguments (first non-flag argument)
   local branch_name=""
@@ -51,35 +52,20 @@ gtrnew() {
     return 1
   fi
   
-  # Create the worktree
+  # Create the worktree (gtr config handles node_modules copying and editor opening)
   if ! gtr new "$@"; then
     echo "Error: Failed to create worktree"
     return 1
   fi
   
-  # Get repo root and worktree path
-  local repo_root
-  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  
-  if [ -z "$repo_root" ]; then
-    echo "Error: Not in a git repository"
-    return 1
-  fi
-  
+  # Get worktree path and cd into it
+  # Note: We still need to cd manually since hooks run in subshells
   local worktree_path
   worktree_path=$(gtr go "$branch_name" 2>/dev/null)
   
   if [ -z "$worktree_path" ] || [ ! -d "$worktree_path" ]; then
     echo "Error: Could not find worktree path for branch: $branch_name"
     return 1
-  fi
-  
-  # Clone node_modules if it exists in main repo (fast on APFS via copy-on-write)
-  if [ -d "$repo_root/node_modules" ] && [ ! -e "$worktree_path/node_modules" ]; then
-    echo "Cloning node_modules..."
-    cp -cR "$repo_root/node_modules" "$worktree_path/node_modules" 2>/dev/null || \
-      cp -R "$repo_root/node_modules" "$worktree_path/node_modules" 2>/dev/null || \
-      echo "Warning: Failed to copy node_modules"
   fi
   
   # Change directory to worktree

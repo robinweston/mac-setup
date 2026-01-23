@@ -1,6 +1,9 @@
 [includeIf "gitdir:~/git/personal/"]
     path = ~/.gitconfig-personal
 
+[include]
+    path = ~/.gtrconfig
+
 [init]
     defaultBranch = main
 

@@ -73,11 +73,11 @@ fi
 
 # Install git-worktree-runner (git gtr)
 echo "Installing git-worktree-runner (git gtr)..."
+GTR_DIR="$HOME/git/personal/git-worktree-runner"
 if command_exists git-gtr; then
     echo "git-gtr already installed - skipping"
 else
     echo "Cloning git-worktree-runner..."
-    GTR_DIR="$HOME/git/personal/git-worktree-runner"
     if [ ! -d "$GTR_DIR" ]; then
         mkdir -p "$HOME/git/personal"
         git clone https://github.com/coderabbitai/git-worktree-runner.git "$GTR_DIR"
@@ -86,6 +86,19 @@ else
     ln -sf "$GTR_DIR/bin/git-gtr" "$(brew --prefix)/bin/git-gtr"
     echo "git-gtr installed successfully"
 fi
+
+# Install git-gtr shell completion
+if [ -d "$GTR_DIR" ] && [ -f "$GTR_DIR/completions/_git-gtr" ]; then
+    echo "Installing git-gtr shell completion..."
+    mkdir -p .zsh/completions
+    cp "$GTR_DIR/completions/_git-gtr" .zsh/completions/
+    echo "git-gtr completion installed successfully"
+else
+    echo "Warning: git-gtr completion file not found at $GTR_DIR/completions/_git-gtr"
+fi
+
+# Note: .gtrconfig is automatically included via .gitconfig [include] section
+# No additional setup needed - the config file is loaded automatically
 
 # NVM
 mkdir -p ~/.nvm
