@@ -44,7 +44,7 @@ PACKAGES=(
     git-delta
     git-lfs
     huggingface-cli
-    nvm
+    fnm
     p7zip
     pkgconf
     pre-commit
@@ -99,9 +99,6 @@ fi
 
 # Note: .gtrconfig is automatically included via .gitconfig [include] section
 # No additional setup needed - the config file is loaded automatically
-
-# NVM
-mkdir -p ~/.nvm
 
 reload_shell
 
