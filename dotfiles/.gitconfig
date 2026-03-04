@@ -1,9 +1,5 @@
 [includeIf "gitdir:~/git/personal/"]
     path = ~/.gitconfig-personal
-
-[include]
-    path = ~/.gtrconfig
-
 [init]
     defaultBranch = main
 
@@ -43,3 +39,12 @@
   allowedSignersFile = ~/.ssh/allowed_signers
 [commit]
   gpgsign = true
+[coderabbit]
+	machineId = cli/44eba20b67a04ea3a9ebff4ea906c082
+[gtr "editor"]
+	default = cursor
+[gtr "copy"]
+	include = .env
+	includeDirs = node_modules
+[gtr "hook"]
+	postCreate = npm install
