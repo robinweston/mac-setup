@@ -5,8 +5,6 @@
 
 [user]
     name = Robin Weston
-	email = robin.weston@mandai.com
-    signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM5XLp0ReKi/8pD4dbYh98uV7wAqB98nGKI/uDTEcPMw
 
 [core]
     pager = delta
@@ -37,10 +35,10 @@
 [gpg "ssh"]
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
   allowedSignersFile = ~/.ssh/allowed_signers
+
 [commit]
   gpgsign = true
-[coderabbit]
-	machineId = cli/44eba20b67a04ea3a9ebff4ea906c082
+
 [gtr "editor"]
 	default = cursor
 [gtr "copy"]
