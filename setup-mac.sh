@@ -56,7 +56,7 @@ fi
 brew update
 
 PACKAGES=(
-    bash cmake ffmpeg gh git git-delta git-lfs 
+    bash cmake codex codex-app ffmpeg gh git git-delta git-lfs 
     huggingface-cli fnm p7zip pkgconf pre-commit 
     qpdf ripgrep uv watchman zsh
 )
