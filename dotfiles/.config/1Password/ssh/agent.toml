@@ -1,0 +1,7 @@
+[[ssh-keys]]
+item = "Personal GitHub"
+vault = "Private"
+
+[[ssh-keys]]
+item = "Cettire BitBucket SSH Key"
+vault = "Cettire"
