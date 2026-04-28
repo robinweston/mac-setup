@@ -1,5 +1,7 @@
 [includeIf "gitdir:~/git/personal/"]
     path = ~/.gitconfig-personal
+[includeIf "hasconfig:remote.*.url:git@work_git:*"]
+    path = ~/.gitconfig-work
 [init]
     defaultBranch = main
 
