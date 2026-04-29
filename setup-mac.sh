@@ -80,6 +80,7 @@ CASKS=(
     google-chrome
     insomnia
     kiro
+    kiro-cli
     notunes
     rectangle
     slack
