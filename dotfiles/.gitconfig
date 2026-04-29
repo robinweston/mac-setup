@@ -1,4 +1,4 @@
-[includeIf "gitdir:~/git/personal/"]
+[includeIf "hasconfig:remote.*.url:git@personal_git:*"]
     path = ~/.gitconfig-personal
 [includeIf "hasconfig:remote.*.url:git@work_git:*"]
     path = ~/.gitconfig-work
@@ -42,7 +42,7 @@
   gpgsign = true
 
 [gtr "editor"]
-	default = cursor
+	default = kiro
 [gtr "copy"]
 	include = .env
 [gtr "hook"]
