@@ -52,6 +52,7 @@ fi
 brew update
 
 FORMULAE=(
+    awscli
     bash
     cmake
     ffmpeg
