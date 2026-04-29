@@ -78,6 +78,7 @@ CASKS=(
     garmin-express
     google-chrome
     insomnia
+    kiro
     notunes
     rectangle
     slack
