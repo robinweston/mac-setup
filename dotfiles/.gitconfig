@@ -1,6 +1,6 @@
-[includeIf "hasconfig:remote.*.url:personal_git:*"]
+[includeIf "hasconfig:remote.*.url:personal_git:*/*"]
     path = ~/.gitconfig-personal
-[includeIf "hasconfig:remote.*.url:work_git:*"]
+[includeIf "hasconfig:remote.*.url:work_git:*/*"]
     path = ~/.gitconfig-work
 [init]
     defaultBranch = main
