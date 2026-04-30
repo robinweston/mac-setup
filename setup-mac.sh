@@ -3,6 +3,21 @@
 # Exit immediately if any command exits with a non-zero status
 set -e
 
+DOTFILES_ONLY=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --dotfiles-only)
+            DOTFILES_ONLY=true
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: $0 [--dotfiles-only]"
+            exit 1
+            ;;
+    esac
+done
+
 echo "Starting bootstrapping"
 
 # Ensure Homebrew is in PATH for the duration of the script
@@ -41,6 +56,11 @@ fi
 echo "Copying dotfiles"
 # Use -u to only update if files are newer, making it more idempotent
 rsync -av --progress --exclude=.DS_Store ./dotfiles/ ~/
+
+if [ "$DOTFILES_ONLY" = true ]; then
+    echo "Dotfiles copied - exiting because --dotfiles-only was specified"
+    exit 0
+fi
 
 # --- 3. Standard Homebrew & Packages ---
 if ! command_exists brew; then
@@ -127,7 +147,19 @@ fi
 reload_shell
 
 echo "Installing cask apps..."
-brew install --cask ${CASKS[@]}
+for cask in "${CASKS[@]}"; do
+    echo "Processing cask: $cask"
+
+    if brew list --cask "$cask" > /dev/null 2>&1; then
+        if ! brew upgrade --cask "$cask"; then
+            echo "Repairing broken cask state for $cask"
+            brew uninstall --cask --force "$cask" || true
+            brew install --cask "$cask"
+        fi
+    else
+        brew install --cask "$cask"
+    fi
+done
 
 echo "Cleaning up..."
 brew cleanup
