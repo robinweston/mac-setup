@@ -86,6 +86,7 @@ FORMULAE=(
     ripgrep
     uv
     watchman
+    yq
     zsh
 )
 
