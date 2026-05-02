@@ -1,12 +1,11 @@
 [includeIf "hasconfig:remote.*.url:personal_git:*/*"]
     path = ~/.gitconfig-personal
-[includeIf "hasconfig:remote.*.url:work_git:*/*"]
-    path = ~/.gitconfig-work
 [init]
     defaultBranch = main
 
 [user]
     name = Robin Weston
+    email = robin.weston@cettire.com
 
 [core]
     pager = delta
@@ -39,7 +38,7 @@
   allowedSignersFile = ~/.ssh/allowed_signers
 
 [commit]
-  gpgsign = true
+  gpgsign = false
 
 [gtr "editor"]
 	default = kiro

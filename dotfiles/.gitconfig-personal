@@ -1,3 +1,6 @@
 [user]
     email = lcfcforever@hotmail.com
     signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFeZHy+TlBWmclEDEg++FHULwcIAh1hu+JEVF0PuDSqJ
+
+[commit]
+    gpgsign = true
