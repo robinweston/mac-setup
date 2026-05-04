@@ -37,59 +37,67 @@ gtrnew() {
 }
 
 gtrprune() {
-    local repo_root current_head wt_path branch_ref branch upstream removed=0
+    local dry_run=0 removed=0 is_first=1
+    local wt_path branch wt_status upstream
     local -a prune_branches
 
-    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-        echo "not in a git repository" >&2
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|-n) dry_run=1; shift ;;
+            *) echo "usage: gtrprune [--dry-run|-n]" >&2; return 1 ;;
+        esac
+    done
+
+    [[ $dry_run -eq 1 ]] && echo "(dry run mode)"
+
+    echo "Fetching and pruning remote refs..."
+    git fetch --prune || {
+        echo "git fetch --prune failed" >&2
         return 1
     }
+    echo "Fetch complete"
 
-    current_head="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return 1
-
-    echo "Pruning remote refs"
-    git fetch --all --prune --quiet || {
-        echo "git fetch --all --prune failed" >&2
-        return 1
-    }
-
-    while IFS= read -r line; do
-        if [[ "$line" == worktree\ * ]]; then
-            wt_path="${line#worktree }"
-            branch_ref=""
+    echo "Listing worktrees..."
+    while IFS=$'\t' read -r wt_path branch wt_status; do
+        if [[ $is_first -eq 1 ]]; then
+            is_first=0
             continue
         fi
 
-        if [[ "$line" == branch\ refs/heads/* ]]; then
-            branch_ref="${line#branch }"
-            branch="${branch_ref#refs/heads/}"
+        [[ "$wt_status" != "ok" ]] && continue
 
-            if [[ "$wt_path" == "$repo_root" || "$branch" == "$current_head" ]]; then
-                continue
-            fi
+        echo "Checking $branch..."
+        upstream="$(git for-each-ref --format='%(upstream:short)' "refs/heads/$branch")"
 
-            upstream="$(git for-each-ref --format='%(upstream:short)' "$branch_ref")"
-
-            if git merge-base --is-ancestor "$branch_ref" HEAD 2>/dev/null; then
-                prune_branches+=("$branch")
-                continue
-            fi
-
-            if [[ -n "$upstream" ]]; then
-                git rev-parse --verify --quiet "refs/remotes/$upstream^{commit}" >/dev/null || prune_branches+=("$branch")
-            else
-                git rev-parse --verify --quiet "refs/remotes/origin/$branch^{commit}" >/dev/null || prune_branches+=("$branch")
-            fi
+        if [[ -z "$upstream" ]]; then
+            echo "  no upstream, skipping"
+            continue
         fi
-    done < <(git worktree list --porcelain)
+
+        if git rev-parse --verify --quiet "refs/remotes/${upstream}^{commit}" >/dev/null 2>&1; then
+            echo "  upstream $upstream still exists, skipping"
+            continue
+        fi
+
+        echo "  upstream $upstream gone, marking for removal"
+        prune_branches+=("$branch")
+    done < <(git gtr list --porcelain)
 
     if [[ ${#prune_branches[@]} -eq 0 ]]; then
-        echo "No merged or remote-deleted PR worktrees to remove"
+        echo "No worktrees to remove"
+        return 0
+    fi
+
+    if [[ $dry_run -eq 1 ]]; then
+        echo "Dry run — would remove ${#prune_branches[@]} worktree(s):"
+        printf '  %s\n' "${prune_branches[@]}"
+        echo ""
+        echo "Run without --dry-run to remove"
         return 0
     fi
 
     for branch in "${prune_branches[@]}"; do
-        echo "Removing worktree for $branch"
+        echo "==> Removing worktree: $branch"
         if git gtr rm "$branch" --yes; then
             ((removed += 1))
         else
