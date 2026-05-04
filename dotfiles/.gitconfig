@@ -43,6 +43,6 @@
 [gtr "editor"]
 	default = kiro
 [gtr "copy"]
-	include = .env
+	include = **/.env*
 [gtr "hook"]
 	postCreate = npm install

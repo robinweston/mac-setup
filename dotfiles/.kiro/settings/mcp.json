@@ -7,6 +7,10 @@
       "disabled": true,
       "autoApprove": []
     },
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1/mcp/authv2",
+      "disabled": false
+    },
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"],

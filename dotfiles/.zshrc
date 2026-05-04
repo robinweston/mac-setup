@@ -1,8 +1,7 @@
 
 # Kiro CLI pre block. Keep at the top of this file.
 [[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh"
-
-alias gtrprune='git gtr clean --merged --yes'
+[[ -f "$HOME/.zsh/gtr-helpers.zsh" ]] && source "$HOME/.zsh/gtr-helpers.zsh"
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
