@@ -37,7 +37,7 @@ gtrnew() {
 }
 
 gtrprune() {
-    local repo_root current_head path branch_ref branch upstream removed=0
+    local repo_root current_head wt_path branch_ref branch upstream removed=0
     local -a prune_branches
 
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
@@ -55,7 +55,7 @@ gtrprune() {
 
     while IFS= read -r line; do
         if [[ "$line" == worktree\ * ]]; then
-            path="${line#worktree }"
+            wt_path="${line#worktree }"
             branch_ref=""
             continue
         fi
@@ -64,7 +64,7 @@ gtrprune() {
             branch_ref="${line#branch }"
             branch="${branch_ref#refs/heads/}"
 
-            if [[ "$path" == "$repo_root" || "$branch" == "$current_head" ]]; then
+            if [[ "$wt_path" == "$repo_root" || "$branch" == "$current_head" ]]; then
                 continue
             fi
 
