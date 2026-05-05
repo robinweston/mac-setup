@@ -98,7 +98,7 @@ gtrprune() {
 
     for branch in "${prune_branches[@]}"; do
         echo "==> Removing worktree: $branch"
-        if git gtr rm "$branch" --yes; then
+        if git gtr rm "$branch" --delete-branch --yes; then
             ((removed += 1))
         else
             echo "Failed to remove worktree for $branch" >&2
