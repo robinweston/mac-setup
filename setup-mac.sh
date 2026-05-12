@@ -76,14 +76,17 @@ FORMULAE=(
     bash
     cmake
     ffmpeg
+    fnm
     git
     git-delta
+    git-filter-repo
     git-lfs
-    fnm
+    googleworkspace-cli
+    grype
     p7zip
     pkgconf
     qpdf
-    ripgrep
+    slackdump
     uv
     watchman
     yq
@@ -95,10 +98,11 @@ CASKS=(
     brave-browser
     codex
     codex-app
-    docker
     docker-desktop
     garmin-express
+    gcloud-cli
     google-chrome
+    google-drive
     insomnia
     kiro
     kiro-cli
