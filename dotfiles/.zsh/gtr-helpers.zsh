@@ -61,7 +61,8 @@ gtrpr() {
     branch="${branch#refs/heads/}"
 
     echo "Creating worktree for $branch"
-    git gtr new "$branch"
+    gtr new --cd "$branch" || return $?
+    git gtr editor "$branch"
 }
 
 gtrnew() {
