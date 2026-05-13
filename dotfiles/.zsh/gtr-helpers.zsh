@@ -78,6 +78,7 @@ gtrprune() {
     local dry_run=0 removed=0 is_first=1
     local wt_path branch wt_status upstream
     local -a prune_branches
+    local -a stale_paths
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -102,6 +103,14 @@ gtrprune() {
             continue
         fi
 
+        # Handle detached/missing worktrees (branch deleted but directory remains)
+        if [[ "$branch" == "(detached)" || "$wt_status" == "missing" ]]; then
+            echo "Checking ${wt_path##*/}..."
+            echo "  detached/missing worktree, marking for removal"
+            stale_paths+=("$wt_path")
+            continue
+        fi
+
         [[ "$wt_status" != "ok" ]] && continue
 
         echo "Checking $branch..."
@@ -121,22 +130,42 @@ gtrprune() {
         prune_branches+=("$branch")
     done < <(git gtr list --porcelain)
 
-    if [[ ${#prune_branches[@]} -eq 0 ]]; then
+    if [[ ${#prune_branches[@]} -eq 0 && ${#stale_paths[@]} -eq 0 ]]; then
         echo "No worktrees to remove"
         return 0
     fi
 
     if [[ $dry_run -eq 1 ]]; then
-        echo "Dry run — would remove ${#prune_branches[@]} worktree(s):"
+        local total=$(( ${#prune_branches[@]} + ${#stale_paths[@]} ))
+        echo "Dry run — would remove $total worktree(s):"
         printf '  %s\n' "${prune_branches[@]}"
+        for wt_path in "${stale_paths[@]}"; do
+            printf '  %s (stale)\n' "${wt_path##*/}"
+        done
         echo ""
         echo "Run without --dry-run to remove"
         return 0
     fi
 
+    # Remove stale/missing worktrees by pruning metadata and deleting directories
+    if [[ ${#stale_paths[@]} -gt 0 ]]; then
+        echo "Pruning stale worktree metadata..."
+        git worktree prune
+
+        for wt_path in "${stale_paths[@]}"; do
+            echo "==> Removing stale directory: ${wt_path##*/}"
+            if [[ -d "$wt_path" ]]; then
+                rm -rf "$wt_path" && ((removed += 1)) || echo "Failed to remove $wt_path" >&2
+            else
+                ((removed += 1))
+            fi
+        done
+    fi
+
+    # Remove worktrees whose upstream is gone
     for branch in "${prune_branches[@]}"; do
         echo "==> Removing worktree: $branch"
-        if git gtr rm "$branch" --delete-branch --yes; then
+        if git gtr rm "$branch" --delete-branch --force --yes; then
             ((removed += 1))
         else
             echo "Failed to remove worktree for $branch" >&2
