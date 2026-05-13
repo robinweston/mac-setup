@@ -1,5 +1,5 @@
 gtrpr() {
-    local branch
+    local branch workspace repo remote_url
 
     if [[ $# -ne 1 ]]; then
         echo "usage: gtrpr <pr-number>" >&2
@@ -11,13 +11,50 @@ gtrpr() {
         return 1
     fi
 
-    branch="$(
-        bkt pr view "$1" --json \
-            | jq -r '.source.branch.name // .fromRef.displayId // .source.branchName // empty'
-    )"
+    remote_url="$(git remote get-url origin 2>/dev/null)"
+    if [[ -z "$remote_url" ]]; then
+        echo "could not determine origin remote URL" >&2
+        return 1
+    fi
+
+    # Strip trailing .git suffix if present
+    remote_url="${remote_url%.git}"
+
+    # Extract workspace/repo from common remote URL formats:
+    #   work_git:workspace/repo
+    #   git@bitbucket.org:workspace/repo
+    #   https://bitbucket.org/workspace/repo
+    #   ssh://git@bitbucket.org/workspace/repo
+    if [[ "$remote_url" =~ [:/]([^/]+)/([^/]+)$ ]]; then
+        workspace="${match[1]}"
+        repo="${match[2]}"
+    else
+        echo "could not parse workspace/repo from remote URL: $remote_url" >&2
+        return 1
+    fi
+
+    local pr_json
+    pr_json="$(bkt pr view "$1" --workspace "$workspace" --repo "$repo" --json 2>&1)"
+
+    if [[ $? -ne 0 || -z "$pr_json" ]]; then
+        echo "bkt pr view failed:" >&2
+        echo "$pr_json" >&2
+        return 1
+    fi
+
+    branch="$(echo "$pr_json" | jq -r '
+        .pull_request.source.branch.name //
+        .pull_request.fromRef.displayId //
+        .pull_request.source.branchName //
+        .source.branch.name //
+        .fromRef.displayId //
+        empty
+    ')"
 
     if [[ -z "$branch" || "$branch" == "null" ]]; then
         echo "could not resolve source branch for PR $1" >&2
+        echo "pull_request keys:" >&2
+        echo "$pr_json" | jq '.pull_request | keys' >&2
         return 1
     fi
 
