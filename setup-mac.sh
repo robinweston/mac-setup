@@ -99,6 +99,7 @@ CASKS=(
     codex
     codex-app
     docker-desktop
+    finicky
     garmin-express
     gcloud-cli
     google-chrome
@@ -200,6 +201,7 @@ function add_login_item_if_not_exists()
 }
 
 # Add startup items assuming they are in /Applications
+add_login_item_if_not_exists "Finicky"
 add_login_item_if_not_exists "Rectangle"
 add_login_item_if_not_exists "noTunes"
 
