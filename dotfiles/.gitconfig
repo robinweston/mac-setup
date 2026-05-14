@@ -37,8 +37,11 @@
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
   allowedSignersFile = ~/.ssh/allowed_signers
 
+[user]
+  signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEF8vm2g8BfpRwC/5zW8anYQvGD9CrT2IqC8LkyN/bCR
+
 [commit]
-  gpgsign = false
+  gpgsign = true
 
 [gtr "editor"]
 	default = kiro

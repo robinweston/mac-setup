@@ -72,6 +72,7 @@ fi
 brew update
 
 FORMULAE=(
+    aws-vault
     awscli
     bash
     cmake
