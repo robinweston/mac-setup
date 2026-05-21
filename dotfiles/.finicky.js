@@ -1,7 +1,7 @@
 // Finicky configuration
 // https://github.com/johnste/finicky
 
-module.exports = {
+export default {
   defaultBrowser: {
     name: "Brave Browser",
     profile: "Profile 1",
