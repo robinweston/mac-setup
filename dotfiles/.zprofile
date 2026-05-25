@@ -11,6 +11,7 @@ export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
 # aws-vault: use macOS Keychain as the credential backend
 export AWS_VAULT_BACKEND="keychain"
+export AWS_VAULT_BIOMETRICS="true"
 
 
 # Kiro CLI post block. Keep at the bottom of this file.
