@@ -42,7 +42,7 @@ gtrpr() {
         return 1
     fi
 
-    branch="$(echo "$pr_json" | jq -r '
+    branch="$(printf '%s\n' "$pr_json" | jq -r '
         .pull_request.source.branch.name //
         .pull_request.fromRef.displayId //
         .pull_request.source.branchName //
@@ -54,7 +54,7 @@ gtrpr() {
     if [[ -z "$branch" || "$branch" == "null" ]]; then
         echo "could not resolve source branch for PR $1" >&2
         echo "pull_request keys:" >&2
-        echo "$pr_json" | jq '.pull_request | keys' >&2
+        printf '%s\n' "$pr_json" | jq '.pull_request | keys' >&2
         return 1
     fi
 
