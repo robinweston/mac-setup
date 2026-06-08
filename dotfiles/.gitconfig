@@ -48,4 +48,4 @@
 [gtr "copy"]
 	include = **/.env*
 [gtr "hook"]
-	postCreate = sh -c '[ -f .nvmrc ] && fnm install && fnm use; [ -f package.json ] && npm install'
+	postCreate = sh -c "[ -f .nvmrc ] && fnm install && fnm use; [ -f package.json ] && npm install"
