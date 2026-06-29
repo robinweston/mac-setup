@@ -5,3 +5,7 @@ vault = "Private"
 [[ssh-keys]]
 item = "Cettire BitBucket SSH Key"
 vault = "Cettire"
+
+[[ssh-keys]]
+item = "Prod PMS SSH Key"
+vault = "Cettire"
