@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# Open VS Code with an isolated Codex home so its chats stay separate.
+# Codex authentication and configuration (including MCP servers) remain shared.
+shared_codex_home="${CODEX_SHARED_HOME:-$HOME/.codex}"
+vscode_codex_home="${CODEX_VSCODE_HOME:-$HOME/.codex-vscode}"
+vscode_user_data="${CODEX_VSCODE_USER_DATA_DIR:-$HOME/Library/Application Support/Code - Codex}"
+
+if command -v code >/dev/null 2>&1; then
+    code_command="$(command -v code)"
+elif [ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]; then
+    code_command="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+else
+    echo "ccode: VS Code command not found" >&2
+    exit 1
+fi
+
+mkdir -p \
+    "$vscode_codex_home/rules" \
+    "$vscode_codex_home/skills" \
+    "$vscode_user_data" || exit 1
+
+link_shared_path() {
+    shared_path="$1"
+    required="$2"
+    source_path="$shared_codex_home/$shared_path"
+    target_path="$vscode_codex_home/$shared_path"
+
+    if [ ! -e "$source_path" ]; then
+        if [ "$required" = true ]; then
+            echo "ccode: shared Codex file does not exist: $source_path" >&2
+            return 1
+        fi
+        return 0
+    fi
+
+    if [ -L "$target_path" ]; then
+        current_target="$(readlink "$target_path")"
+        if [ "$current_target" != "$source_path" ]; then
+            echo "ccode: refusing to replace symlink: $target_path -> $current_target" >&2
+            return 1
+        fi
+    elif [ -e "$target_path" ]; then
+        echo "ccode: refusing to replace existing file: $target_path" >&2
+        return 1
+    else
+        ln -s "$source_path" "$target_path" || return 1
+    fi
+}
+
+for shared_path in auth.json config.toml; do
+    link_shared_path "$shared_path" true || exit 1
+done
+
+for shared_path in rules/default.rules skills/hatch-pet; do
+    link_shared_path "$shared_path" false || exit 1
+done
+
+# A separate user-data directory forces a distinct VS Code process, ensuring
+# its extension host inherits CODEX_HOME even when regular VS Code is open.
+CODEX_HOME="$vscode_codex_home" exec "$code_command" \
+    --user-data-dir "$vscode_user_data" \
+    --new-window \
+    "$@"

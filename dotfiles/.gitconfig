@@ -44,7 +44,7 @@
   gpgsign = true
 
 [gtr "editor"]
-	default = code
+	default = ccode
 [gtr "copy"]
 	include = .env
 [gtr "hook"]

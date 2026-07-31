@@ -64,6 +64,7 @@ venv.bak/
 # IDE
 .idea/
 .vscode/
+.codex-vscode/
 *.swp
 *.swo
 *~
@@ -87,4 +88,4 @@ coverage/
 .cache/
 
 # System Files
-Thumbs.db 
+Thumbs.db
