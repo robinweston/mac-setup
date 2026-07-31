@@ -44,8 +44,9 @@
   gpgsign = true
 
 [gtr "editor"]
-	default = kiro
+	default = code
 [gtr "copy"]
 	include = .env
 [gtr "hook"]
 	postCreate = ~/.zsh/gtr-post-create.sh
+	postCd = fnm use --install-if-missing --silent-if-unchanged
