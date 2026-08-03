@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Open VS Code with an isolated Codex home so its chats stay separate.
+# Open VS Code with Codex state isolated to the current directory.
 # Codex authentication and configuration (including MCP servers) remain shared.
 shared_codex_home="${CODEX_SHARED_HOME:-$HOME/.codex}"
-vscode_codex_home="${CODEX_VSCODE_HOME:-$HOME/.codex-vscode}"
+workspace_root="$(pwd -P)" || exit 1
+vscode_codex_home="${CODEX_VSCODE_HOME:-$workspace_root/.codex-vscode}"
 vscode_user_data="${CODEX_VSCODE_USER_DATA_DIR:-$HOME/Library/Application Support/Code - Codex}"
 
 if command -v code >/dev/null 2>&1; then
@@ -56,9 +57,11 @@ for shared_path in rules/default.rules skills/hatch-pet; do
     link_shared_path "$shared_path" false || exit 1
 done
 
-# A separate user-data directory forces a distinct VS Code process, ensuring
-# its extension host inherits CODEX_HOME even when regular VS Code is open.
+# Keep Codex VS Code state separate from regular VS Code while sharing it across
+# workspaces. Always pass the workspace root so an argument-free invocation does
+# not open the Welcome page.
 CODEX_HOME="$vscode_codex_home" exec "$code_command" \
     --user-data-dir "$vscode_user_data" \
     --new-window \
+    "$workspace_root" \
     "$@"
