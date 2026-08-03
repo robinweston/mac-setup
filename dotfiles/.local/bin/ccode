@@ -4,8 +4,23 @@
 # Codex authentication and configuration (including MCP servers) remain shared.
 shared_codex_home="${CODEX_SHARED_HOME:-$HOME/.codex}"
 workspace_root="$(pwd -P)" || exit 1
-vscode_codex_home="${CODEX_VSCODE_HOME:-$workspace_root/.codex-vscode}"
 vscode_user_data="${CODEX_VSCODE_USER_DATA_DIR:-$HOME/Library/Application Support/Code - Codex}"
+
+if ! workspace_hash="$(printf '%s' "$workspace_root" | shasum -a 256 | awk '{print $1}')" ||
+    [ "${#workspace_hash}" -ne 64 ]; then
+    echo "ccode: unable to hash canonical workspace path: $workspace_root" >&2
+    exit 1
+fi
+
+vscode_codex_home="$HOME/.cv/$workspace_hash"
+workspace_path_file="$vscode_codex_home/workspace-path"
+ipc_socket="$vscode_codex_home/ipc/ipc.sock"
+ipc_socket_bytes="$(LC_ALL=C printf '%s' "$ipc_socket" | wc -c | tr -d '[:space:]')"
+
+if [ "$ipc_socket_bytes" -ge 104 ]; then
+    echo "ccode: Codex IPC socket path is $ipc_socket_bytes bytes (must be below 104): $ipc_socket" >&2
+    exit 1
+fi
 
 if command -v code >/dev/null 2>&1; then
     code_command="$(command -v code)"
@@ -20,6 +35,20 @@ mkdir -p \
     "$vscode_codex_home/rules" \
     "$vscode_codex_home/skills" \
     "$vscode_user_data" || exit 1
+
+if [ -e "$workspace_path_file" ]; then
+    recorded_workspace="$(cat "$workspace_path_file")" || exit 1
+    if [ "$recorded_workspace" != "$workspace_root" ]; then
+        echo "ccode: workspace hash collision detected" >&2
+        echo "ccode: $vscode_codex_home belongs to: $recorded_workspace" >&2
+        echo "ccode: current workspace is: $workspace_root" >&2
+        exit 1
+    fi
+else
+    # The digest makes a collision extraordinarily unlikely; this marker lets us
+    # detect one rather than silently mixing state from two workspaces.
+    printf '%s\n' "$workspace_root" >"$workspace_path_file" || exit 1
+fi
 
 link_shared_path() {
     shared_path="$1"
