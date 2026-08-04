@@ -60,6 +60,13 @@ gtrpr() {
 
     branch="${branch#refs/heads/}"
 
+    if git worktree list --porcelain | grep -Fqx "branch refs/heads/$branch"; then
+        echo "Using existing worktree for $branch"
+        gtr cd "$branch" || return $?
+        ccode .
+        return $?
+    fi
+
     echo "Creating worktree for $branch"
     gtr new --cd "$branch" || return $?
     git gtr editor "$branch"
