@@ -1,0 +1,8 @@
+{
+    "explorer.confirmDelete": false,
+    "files.autoSave": "afterDelay",
+    "explorer.confirmDragAndDrop": false,
+    "git.autofetch": true,
+    "chat.disableAIFeatures": true,
+    "workbench.startupEditor": "none"
+}

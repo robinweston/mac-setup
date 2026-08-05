@@ -57,6 +57,16 @@ echo "Copying dotfiles"
 # Use -u to only update if files are newer, making it more idempotent
 rsync -av --progress --exclude=.DS_Store ./dotfiles/ ~/
 
+# VS Code uses Library/Application Support on macOS. Keep the source settings
+# with the other dotfiles and link VS Code's expected path to it.
+VSCODE_DOTFILE="$HOME/.config/Code/User/settings.json"
+VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
+VSCODE_SETTINGS="$VSCODE_USER_DIR/settings.json"
+
+echo "Linking global VS Code settings"
+mkdir -p "$VSCODE_USER_DIR"
+ln -sfn "$VSCODE_DOTFILE" "$VSCODE_SETTINGS"
+
 if [ "$DOTFILES_ONLY" = true ]; then
     echo "Dotfiles copied - exiting because --dotfiles-only was specified"
     exit 0
