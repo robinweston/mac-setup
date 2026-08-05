@@ -4,5 +4,6 @@
     "explorer.confirmDragAndDrop": false,
     "git.autofetch": true,
     "chat.disableAIFeatures": true,
+    "extensions.ignoreRecommendations": true,
     "workbench.startupEditor": "none"
 }
