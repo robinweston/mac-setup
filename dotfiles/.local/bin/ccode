@@ -5,6 +5,9 @@
 shared_codex_home="${CODEX_SHARED_HOME:-$HOME/.codex}"
 workspace_root="$(pwd -P)" || exit 1
 vscode_user_data="${CODEX_VSCODE_USER_DATA_DIR:-$HOME/Library/Application Support/Code - Codex}"
+shared_vscode_settings="${CODEX_VSCODE_SETTINGS_FILE:-$HOME/.config/Code/User/settings.json}"
+vscode_user_dir="$vscode_user_data/User"
+vscode_settings="$vscode_user_dir/settings.json"
 
 if ! workspace_hash="$(printf '%s' "$workspace_root" | shasum -a 256 | awk '{print $1}')" ||
     [ "${#workspace_hash}" -ne 64 ]; then
@@ -34,7 +37,19 @@ fi
 mkdir -p \
     "$vscode_codex_home/rules" \
     "$vscode_codex_home/skills" \
-    "$vscode_user_data" || exit 1
+    "$vscode_user_dir" || exit 1
+
+# --user-data-dir gives Codex windows a separate VS Code User directory. Link
+# its settings back to the managed dotfile so regular and Codex windows use the
+# same configuration. Replace a stale standalone file left by older versions.
+if [ ! -f "$shared_vscode_settings" ]; then
+    echo "ccode: shared VS Code settings do not exist: $shared_vscode_settings" >&2
+    exit 1
+fi
+
+if [ "$vscode_settings" != "$shared_vscode_settings" ]; then
+    ln -sfn "$shared_vscode_settings" "$vscode_settings" || exit 1
+fi
 
 if [ -e "$workspace_path_file" ]; then
     recorded_workspace="$(cat "$workspace_path_file")" || exit 1
