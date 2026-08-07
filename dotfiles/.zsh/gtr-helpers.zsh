@@ -59,23 +59,65 @@ gtrpr() {
     fi
 
     branch="${branch#refs/heads/}"
+    gtrbranch "$branch"
+}
 
-    if git worktree list --porcelain | grep -Fqx "branch refs/heads/$branch"; then
+_gtr_fetch_origin_for_branch_check() {
+    if ! git fetch origin --prune; then
+        echo "could not fetch origin; branch existence cannot be verified" >&2
+        return 1
+    fi
+}
+
+_gtr_branch_has_worktree() {
+    git worktree list --porcelain | grep -Fqx "branch refs/heads/$1"
+}
+
+gtrbranch() {
+    local branch="$1"
+
+    if [[ $# -ne 1 ]]; then
+        echo "usage: gtrbranch <branch>" >&2
+        return 1
+    fi
+
+    _gtr_fetch_origin_for_branch_check || return $?
+
+    if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+        echo "remote branch origin/$branch does not exist" >&2
+        return 1
+    fi
+
+    if _gtr_branch_has_worktree "$branch"; then
         echo "Using existing worktree for $branch"
         gtr cd "$branch" || return $?
         ccode .
         return $?
     fi
 
-    echo "Creating worktree for $branch"
-    gtr new --cd "$branch" || return $?
+    echo "Creating worktree for existing branch $branch"
+    gtr new --cd "$branch" --track remote --no-fetch || return $?
     git gtr editor "$branch"
 }
 
 gtrnew() {
     local branch
 
-    gtr new --cd "$@" || return $?
+    if [[ $# -lt 1 || "$1" == -* ]]; then
+        echo "usage: gtrnew <branch> [options]" >&2
+        return 1
+    fi
+
+    branch="$1"
+    _gtr_fetch_origin_for_branch_check || return $?
+
+    if git show-ref --verify --quiet "refs/heads/$branch" ||
+       git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+        echo "branch '$branch' already exists; use gtrbranch $branch" >&2
+        return 1
+    fi
+
+    gtr new --cd "$@" --track none --no-fetch || return $?
 
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return $?
     git gtr editor "$branch"
