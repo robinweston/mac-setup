@@ -37,7 +37,43 @@ fi
 mkdir -p \
     "$vscode_codex_home/rules" \
     "$vscode_codex_home/skills" \
-    "$vscode_user_dir" || exit 1
+    "$vscode_user_dir" \
+    "$shared_codex_home/mcp-oauth-locks" || exit 1
+
+# MCP OAuth credentials in the OS keyring are host-global, so their transaction
+# locks must be host-global too. Codex currently resolves these locks below
+# CODEX_HOME/mcp-oauth-locks; link only that directory to the shared authority
+# while sessions, databases, logs, IPC, and all other runtime state remain in the
+# workspace home. Lock files contain no durable state: their ownership is the
+# open file descriptor, and files left after a process exits are harmless.
+shared_oauth_locks="$shared_codex_home/mcp-oauth-locks"
+workspace_oauth_locks="$vscode_codex_home/mcp-oauth-locks"
+
+if [ -L "$workspace_oauth_locks" ]; then
+    current_target="$(readlink "$workspace_oauth_locks")"
+    if [ "$current_target" != "$shared_oauth_locks" ]; then
+        echo "ccode: refusing to replace symlink: $workspace_oauth_locks -> $current_target" >&2
+        exit 1
+    fi
+elif [ -d "$workspace_oauth_locks" ]; then
+    # Older ccode versions created workspace-local lock directories. Preserve
+    # one recoverable backup instead of deleting their stale lock files. Close
+    # existing Codex windows before this migration: advisory locks held by an
+    # already-running process remain attached to their original inode.
+    legacy_oauth_locks="$vscode_codex_home/mcp-oauth-locks.workspace-backup"
+    if [ -e "$legacy_oauth_locks" ] || [ -L "$legacy_oauth_locks" ]; then
+        echo "ccode: cannot migrate OAuth locks; backup already exists: $legacy_oauth_locks" >&2
+        exit 1
+    fi
+    mv "$workspace_oauth_locks" "$legacy_oauth_locks" || exit 1
+    ln -s "$shared_oauth_locks" "$workspace_oauth_locks" || exit 1
+    echo "ccode: moved legacy workspace OAuth locks to: $legacy_oauth_locks" >&2
+elif [ -e "$workspace_oauth_locks" ]; then
+    echo "ccode: refusing to replace existing path: $workspace_oauth_locks" >&2
+    exit 1
+else
+    ln -s "$shared_oauth_locks" "$workspace_oauth_locks" || exit 1
+fi
 
 # --user-data-dir gives Codex windows a separate VS Code User directory. Link
 # its settings back to the managed dotfile so regular and Codex windows use the
