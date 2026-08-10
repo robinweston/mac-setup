@@ -122,8 +122,17 @@ link_shared_path() {
             return 1
         fi
     elif [ -e "$target_path" ]; then
-        echo "ccode: refusing to replace existing file: $target_path" >&2
-        return 1
+        # Codex may update auth.json with an atomic rename, replacing this
+        # symlink with a regular file. Repair it when no state would be lost.
+        if [ "$shared_path" = auth.json ] &&
+            [ -f "$target_path" ] &&
+            cmp -s "$source_path" "$target_path"; then
+            rm "$target_path" || return 1
+            ln -s "$source_path" "$target_path" || return 1
+        else
+            echo "ccode: refusing to replace existing file: $target_path" >&2
+            return 1
+        fi
     else
         ln -s "$source_path" "$target_path" || return 1
     fi

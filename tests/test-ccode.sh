@@ -60,6 +60,13 @@ codex_home_one="$(cat "$test_root/one.txt")"
 codex_home_two="$(cat "$test_root/two.txt")"
 shared_locks="$shared_home/mcp-oauth-locks"
 
+# Codex can atomically replace the auth symlink with an identical regular file.
+# The next launch repairs that file without requiring manual cleanup.
+rm "$codex_home_one/auth.json"
+cp "$shared_home/auth.json" "$codex_home_one/auth.json"
+launch_workspace "$workspace_one" "$test_root/one-relaunch.txt"
+assert_link "$codex_home_one/auth.json" "$shared_home/auth.json"
+
 [ "$codex_home_one" != "$codex_home_two" ] || fail "workspaces resolved to the same CODEX_HOME"
 assert_link "$codex_home_one/mcp-oauth-locks" "$shared_locks"
 assert_link "$codex_home_two/mcp-oauth-locks" "$shared_locks"
@@ -104,6 +111,7 @@ done
 
 echo "PASS: shell syntax"
 echo "PASS: separate workspace CODEX_HOME directories"
+echo "PASS: identical workspace auth file is repaired automatically"
 echo "PASS: shared host-global MCP OAuth lock directory"
 echo "PASS: same-account locks resolve to one inode across workspaces"
 echo "PASS: different-account locks remain independent"
