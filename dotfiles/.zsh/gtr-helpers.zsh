@@ -1,8 +1,25 @@
+_gtr_pr_number_from_arg() {
+    local pattern='^https?://bitbucket\.org/[^/]+/[^/]+/pull-requests/([[:digit:]]+)([/?#].*)?$'
+
+    if [[ "$1" =~ '^[[:digit:]]+$' ]]; then
+        printf '%s\n' "$1"
+        return 0
+    fi
+
+    [[ "$1" =~ $pattern ]] || return 1
+    printf '%s\n' "${match[1]}"
+}
+
 gtrpr() {
-    local branch workspace repo remote_url
+    local branch workspace repo remote_url pr_number
 
     if [[ $# -ne 1 ]]; then
-        echo "usage: gtrpr <pr-number>" >&2
+        echo "usage: gtrpr <pr-number-or-bitbucket-url>" >&2
+        return 1
+    fi
+
+    if ! pr_number="$(_gtr_pr_number_from_arg "$1")"; then
+        echo "invalid PR number or Bitbucket pull-request URL: $1" >&2
         return 1
     fi
 
@@ -34,7 +51,7 @@ gtrpr() {
     fi
 
     local pr_json
-    pr_json="$(bkt pr view "$1" --workspace "$workspace" --repo "$repo" --json 2>&1)"
+    pr_json="$(bkt pr view "$pr_number" --workspace "$workspace" --repo "$repo" --json 2>&1)"
 
     if [[ $? -ne 0 || -z "$pr_json" ]]; then
         echo "bkt pr view failed:" >&2
@@ -52,7 +69,7 @@ gtrpr() {
     ')"
 
     if [[ -z "$branch" || "$branch" == "null" ]]; then
-        echo "could not resolve source branch for PR $1" >&2
+        echo "could not resolve source branch for PR $pr_number" >&2
         echo "pull_request keys:" >&2
         printf '%s\n' "$pr_json" | jq '.pull_request | keys' >&2
         return 1
