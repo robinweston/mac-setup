@@ -81,7 +81,11 @@ fi
 
 brew update
 
+# Atlassian CLI is distributed from Atlassian's Homebrew tap.
+brew tap atlassian/homebrew-acli
+
 FORMULAE=(
+    acli
     aws-vault
     awscli
     bash
@@ -94,6 +98,7 @@ FORMULAE=(
     git-lfs
     googleworkspace-cli
     grype
+    jq
     p7zip
     pkgconf
     qpdf

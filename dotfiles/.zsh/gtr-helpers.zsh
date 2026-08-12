@@ -100,15 +100,72 @@ gtrbranch() {
     git gtr editor "$branch"
 }
 
+_gtr_jira_issue_key_from_url() {
+    local pattern='^https?://[^/]+/browse/([[:alpha:]][[:alnum:]_]*-[[:digit:]]+)([/?#].*)?$'
+
+    [[ "$1" =~ $pattern ]] || return 1
+    printf '%s\n' "${match[1]:u}"
+}
+
+_gtr_branch_from_jira_issue() {
+    local issue_key="$1"
+    local jira_json summary slug
+
+    if ! command -v acli >/dev/null 2>&1; then
+        echo "Cannot create a branch for Jira issue $issue_key: Atlassian CLI (acli) is not installed." >&2
+        echo "Install it with:" >&2
+        echo "  brew tap atlassian/homebrew-acli" >&2
+        echo "  brew install acli" >&2
+        return 1
+    fi
+
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq is not installed" >&2
+        return 1
+    fi
+
+    if ! jira_json="$(acli jira workitem view "$issue_key" --fields summary --json 2>&1)"; then
+        echo "could not load Jira issue $issue_key:" >&2
+        printf '%s\n' "$jira_json" >&2
+        echo "If needed, authenticate with: acli jira auth login --web" >&2
+        return 1
+    fi
+
+    summary="$(printf '%s\n' "$jira_json" | jq -r '.fields.summary // empty' 2>/dev/null)"
+    if [[ -z "$summary" ]]; then
+        echo "Jira issue $issue_key did not return a summary" >&2
+        return 1
+    fi
+
+    slug="$(printf '%s\n' "$summary" |
+        tr '[:upper:]' '[:lower:]' |
+        sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+
+    if [[ -n "$slug" ]]; then
+        printf '%s-%s\n' "${issue_key:l}" "$slug"
+    else
+        printf '%s\n' "${issue_key:l}"
+    fi
+}
+
 gtrnew() {
-    local branch
+    local branch issue_key
+    local -a gtr_args
 
     if [[ $# -lt 1 || "$1" == -* ]]; then
-        echo "usage: gtrnew <branch> [options]" >&2
+        echo "usage: gtrnew <branch-or-jira-url> [options]" >&2
         return 1
     fi
 
     branch="$1"
+    if issue_key="$(_gtr_jira_issue_key_from_url "$branch")"; then
+        branch="$(_gtr_branch_from_jira_issue "$issue_key")" || return $?
+        echo "Using branch name: $branch"
+    fi
+
+    gtr_args=("$@")
+    gtr_args[1]="$branch"
+
     _gtr_fetch_origin_for_branch_check || return $?
 
     if git show-ref --verify --quiet "refs/heads/$branch" ||
@@ -117,7 +174,7 @@ gtrnew() {
         return 1
     fi
 
-    gtr new --cd "$@" --track none --no-fetch || return $?
+    gtr new --cd "${gtr_args[@]}" --track none --no-fetch || return $?
 
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return $?
     git gtr editor "$branch"
