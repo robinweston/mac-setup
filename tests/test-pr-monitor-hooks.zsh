@@ -18,6 +18,7 @@ worktree="$test_root/worktree"
 fake_home="$test_root/home"
 shell_init="$fake_home/.zsh/gtr-helpers.zsh"
 fake_codex="$test_root/codex"
+gtr_cache="$test_root/cache/gtr/init-gtr.zsh"
 
 git init -q "$base_repository"
 git -C "$base_repository" remote add origin work_git:cetarktech/api.git
@@ -50,6 +51,23 @@ print -rl -- "$@"
 EOF
 chmod +x "$fake_codex"
 
+mkdir -p "${gtr_cache:h}"
+cat > "$gtr_cache" <<'EOF'
+gtr() {
+    return 0
+}
+EOF
+
+HOME="$fake_home" \
+XDG_CACHE_HOME="${gtr_cache:h:h}" \
+REPO_GTR_HELPERS="$repo_root/dotfiles/.zsh/gtr-helpers.zsh" \
+/bin/zsh -c '
+    source "$REPO_GTR_HELPERS"
+    (( $+functions[gtr] )) && exit 1
+    _gtr_ensure_shell_integration
+    (( $+functions[gtr] ))
+' || fail "gtr shell integration was not loaded for a non-interactive caller"
+
 output="$(
     PR_MONITOR_EVENT=review_assigned_to_me \
     PR_MONITOR_REPOSITORY=api \
@@ -76,4 +94,5 @@ fi
 
 print -- "PASS: event-name dispatch"
 print -- "PASS: unconfigured event no-op"
+print -- "PASS: non-interactive gtr shell integration"
 print -- "PASS: gtr-new-to-Codex review handoff"

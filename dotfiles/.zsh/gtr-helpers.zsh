@@ -92,6 +92,25 @@ _gtr_fetch_origin_for_branch_check() {
     fi
 }
 
+_gtr_ensure_shell_integration() {
+    local init_file="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/init-gtr.zsh"
+
+    # `gtr` is a shell function, not the git-gtr executable. Non-interactive
+    # callers such as PR Monitor do not load .zshrc, so initialize it here.
+    (( $+functions[gtr] )) && return 0
+
+    if [[ -r "$init_file" ]]; then
+        source "$init_file" || return $?
+    else
+        eval "$(git gtr init zsh)" || return $?
+    fi
+
+    (( $+functions[gtr] )) || {
+        echo "could not initialize the gtr shell integration" >&2
+        return 1
+    }
+}
+
 _gtr_branch_has_worktree() {
     git worktree list --porcelain | grep -Fqx "branch refs/heads/$1"
 }
@@ -99,6 +118,7 @@ _gtr_branch_has_worktree() {
 _gtr_open_remote_branch() {
     local branch="$1"
     shift
+    _gtr_ensure_shell_integration || return $?
     _gtr_fetch_origin_for_branch_check || return $?
 
     if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
@@ -169,6 +189,7 @@ _gtr_branch_from_jira_issue() {
 _gtr_create_local_branch() {
     local branch="$1"
     shift
+    _gtr_ensure_shell_integration || return $?
     _gtr_fetch_origin_for_branch_check || return $?
 
     if git show-ref --verify --quiet "refs/heads/$branch" ||
@@ -183,7 +204,7 @@ _gtr_create_local_branch() {
     git gtr editor "$branch"
 }
 
-gtr-new() {
+function gtr-new {
     local target kind workspace repo value url_fields repository_identity base_repository
     local branch issue_key gtr_status
     local start_directory="$PWD"
@@ -227,6 +248,182 @@ gtr-new() {
     fi
 
     _gtr_create_local_branch "$branch" "${@:2}"
+}
+
+# URLs commonly contain `?`, which Zsh otherwise treats as glob syntax before
+# gtr-new has a chance to parse them.
+alias gtr-new='noglob gtr-new'
+
+_git_update_display_path() {
+    local display_target="$1"
+
+    if [[ "$display_target" == "$HOME" ]]; then
+        printf '~\n'
+    elif [[ "$display_target" == "$HOME"/* ]]; then
+        printf '~/%s\n' "${display_target#$HOME/}"
+    else
+        printf '%s\n' "$display_target"
+    fi
+}
+
+git-update() {
+    setopt localoptions nobgnice
+
+    local repository worktree base_worktree field output_file current_branch
+    local branch before_head after_head pull_output prune_output reason display
+    local index pull_status prune_status
+    local -A seen_worktrees=()
+    local -a worktrees=() pids=() output_files=() branches=() before_heads=() displays=()
+    local -a updated=() unchanged=() failed=()
+    local -a prune_succeeded=() prune_failed=()
+
+    if (( $# != 0 )); then
+        echo "usage: git-update" >&2
+        return 1
+    fi
+
+    repository="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+        echo "git-update must be run inside a Git worktree" >&2
+        return 1
+    }
+    current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ "$current_branch" == main ]]; then
+        cd -- "$repository" || return $?
+    else
+        gtr cd main || return $?
+    fi
+    base_worktree="${PWD:A}"
+
+    echo "Updating $(_git_update_display_path "$base_worktree")..."
+    worktree="$base_worktree"
+    display="$(_git_update_display_path "$worktree")"
+    branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    [[ -n "$branch" ]] || branch="detached"
+    before_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
+
+    printf '  %s [%s] ... ' "$display" "$branch"
+    if pull_output="$(git -C "$worktree" pull --rebase 2>&1)"; then
+        pull_status=0
+    else
+        pull_status=$?
+    fi
+    after_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
+
+    if (( pull_status != 0 )); then
+        reason="${pull_output%%$'\n'*}"
+        [[ -n "$reason" ]] || reason="git pull --rebase exited with status $pull_status"
+        failed+=("$display [$branch] — $reason")
+        echo "FAILED"
+    elif [[ "$before_head" != "$after_head" ]]; then
+        updated+=("$display [$branch] — ${before_head[1,8]:-unborn} -> ${after_head[1,8]:-unknown}")
+        echo "updated"
+    else
+        unchanged+=("$display [$branch]")
+        echo "already current"
+    fi
+
+    display="$(_git_update_display_path "$base_worktree")"
+    printf '  Pruning %s ... ' "$display"
+    if prune_output="$(cd -- "$base_worktree" && gtr-prune 2>&1)"; then
+        prune_status=0
+    else
+        prune_status=$?
+    fi
+
+    if (( prune_status == 0 )); then
+        prune_succeeded+=("$display")
+        echo "done"
+    else
+        reason="${prune_output%%$'\n'*}"
+        [[ -n "$reason" ]] || reason="gtr-prune exited with status $prune_status"
+        prune_failed+=("$display — $reason")
+        echo "FAILED"
+    fi
+
+    # Query Git again after pruning and update only the worktrees that are
+    # still registered and present. The base checkout was already updated.
+    while IFS= read -r -d $'\0' field; do
+        [[ "$field" == worktree\ * ]] || continue
+        worktree="${field#worktree }"
+        [[ -d "$worktree" ]] || continue
+        repository="$(git -C "$worktree" rev-parse --show-toplevel 2>/dev/null)" || continue
+        repository="${repository:A}"
+        [[ "$repository" == "$base_worktree" ]] && continue
+        seen_worktrees[$repository]=1
+    done < <(git -C "$base_worktree" worktree list --porcelain -z 2>/dev/null)
+    worktrees=("${(@kon)seen_worktrees}")
+
+    if (( ${#worktrees} > 0 )); then
+        echo "Updating ${#worktrees} remaining worktree(s) in parallel..."
+    fi
+
+    # Pull independent worktrees concurrently. Each job gets its own output
+    # file so failures can still be attributed and summarized deterministically.
+    for worktree in "${worktrees[@]}"; do
+        display="$(_git_update_display_path "$worktree")"
+        branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+        [[ -n "$branch" ]] || branch="detached"
+        before_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
+        output_file="$(mktemp "${TMPDIR:-/tmp}/git-update.XXXXXX")" || {
+            echo "could not create temporary output file" >&2
+            return 1
+        }
+
+        displays+=("$display")
+        branches+=("$branch")
+        before_heads+=("$before_head")
+        output_files+=("$output_file")
+        git -C "$worktree" pull --rebase >| "$output_file" 2>&1 &
+        pids+=("$!")
+    done
+
+    for (( index = 1; index <= ${#worktrees}; index += 1 )); do
+        worktree="${worktrees[$index]}"
+        display="${displays[$index]}"
+        branch="${branches[$index]}"
+        before_head="${before_heads[$index]}"
+        output_file="${output_files[$index]}"
+
+        printf '  %s [%s] ... ' "$display" "$branch"
+        if wait "${pids[$index]}"; then
+            pull_status=0
+        else
+            pull_status=$?
+        fi
+        pull_output="$(<"$output_file")"
+        rm -f -- "$output_file"
+        after_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
+
+        if (( pull_status != 0 )); then
+            reason="${pull_output%%$'\n'*}"
+            [[ -n "$reason" ]] || reason="git pull --rebase exited with status $pull_status"
+            failed+=("$display [$branch] — $reason")
+            echo "FAILED"
+        elif [[ "$before_head" != "$after_head" ]]; then
+            updated+=("$display [$branch] — ${before_head[1,8]:-unborn} -> ${after_head[1,8]:-unknown}")
+            echo "updated"
+        else
+            unchanged+=("$display [$branch]")
+            echo "already current"
+        fi
+    done
+
+    echo ""
+    echo "Update report"
+    echo "  Updated: ${#updated}"
+    (( ${#updated} > 0 )) && printf '    %s\n' "${updated[@]}"
+    echo "  Already current: ${#unchanged}"
+    (( ${#unchanged} > 0 )) && printf '    %s\n' "${unchanged[@]}"
+    echo "  Failed: ${#failed}"
+    (( ${#failed} > 0 )) && printf '    %s\n' "${failed[@]}"
+    echo "  Pruned successfully: ${#prune_succeeded}"
+    (( ${#prune_succeeded} > 0 )) && printf '    %s\n' "${prune_succeeded[@]}"
+    echo "  Prune failed: ${#prune_failed}"
+    (( ${#prune_failed} > 0 )) && printf '    %s\n' "${prune_failed[@]}"
+
+    # Individual failures are fully reported but do not make the batch stop or
+    # leave an interactive shell with a failing status.
+    return 0
 }
 
 gtr-prune() {
