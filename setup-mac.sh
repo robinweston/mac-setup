@@ -183,6 +183,27 @@ for cask in "${CASKS[@]}"; do
     fi
 done
 
+# Keep Codex's shared session store while showing only the current workspace's
+# threads in VS Code. This companion extension detects Codex extension updates
+# and reapplies its guarded workspace filter when the shipped bundle changes.
+VSCODE_EXTENSIONS=(
+    xsjk.codex-workspace-filter
+)
+
+if command_exists code; then
+    echo "Installing VS Code extensions..."
+    installed_vscode_extensions="$(code --list-extensions)"
+    for extension in "${VSCODE_EXTENSIONS[@]}"; do
+        if echo "$installed_vscode_extensions" | grep -Fxi "$extension" > /dev/null; then
+            echo "$extension already installed - skipping"
+        else
+            code --install-extension "$extension"
+        fi
+    done
+else
+    echo "Warning: VS Code command not found; skipping VS Code extensions"
+fi
+
 echo "Cleaning up..."
 brew cleanup
 

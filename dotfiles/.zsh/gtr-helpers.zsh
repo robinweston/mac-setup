@@ -108,7 +108,7 @@ gtrbranch() {
     if _gtr_branch_has_worktree "$branch"; then
         echo "Using existing worktree for $branch"
         gtr cd "$branch" || return $?
-        ccode .
+        code .
         return $?
     fi
 
