@@ -1,0 +1,28 @@
+#!/bin/zsh
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+event="${PR_MONITOR_EVENT:-}"
+if [[ -z "$event" || ! "$event" =~ ^[a-z_][a-z0-9_]*$ ]]; then
+    print -u2 -- "PR Monitor hook dispatcher: invalid or missing PR_MONITOR_EVENT"
+    exit 1
+fi
+
+hook_directory="${0:A:h}"
+hook="$hook_directory/$event"
+
+# A single wildcard PR Monitor hook can feed this dispatcher. Events without a
+# matching executable are intentionally ignored.
+if [[ ! -e "$hook" ]]; then
+    print -- "No dotfiles hook configured for $event"
+    exit 0
+fi
+
+if [[ ! -x "$hook" ]]; then
+    print -u2 -- "PR Monitor hook dispatcher: hook is not executable: $hook"
+    exit 1
+fi
+
+exec "$hook"

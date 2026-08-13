@@ -3,6 +3,9 @@ set -eu
 
 repo_root="$(cd "${0:A:h}/.." && pwd -P)"
 source "$repo_root/dotfiles/.zsh/gtr-helpers.zsh"
+test_root="$(mktemp -d "${TMPDIR:-/tmp}/gtr-helpers.XXXXXX")"
+test_root="${test_root:A}"
+trap 'rm -rf -- "$test_root"' EXIT
 
 fail() {
     echo "FAIL: $*" >&2
@@ -13,12 +16,52 @@ assert_equal() {
     [[ "$1" == "$2" ]] || fail "expected '$2', got '$1'"
 }
 
-assert_equal "$(_gtr_pr_number_from_arg '256')" "256"
-assert_equal "$(_gtr_pr_number_from_arg 'https://bitbucket.org/cetarktech/genai-products/pull-requests/256#comment-838617473')" "256"
-assert_equal "$(_gtr_pr_number_from_arg 'https://bitbucket.org/cetarktech/genai-products/pull-requests/42?tab=commits')" "42"
-if _gtr_pr_number_from_arg 'https://example.com/pull-requests/256' >/dev/null; then
+assert_equal "$(_gtr_parse_bitbucket_pr_url 'https://bitbucket.org/cetarktech/genai-products/pull-requests/256#comment-838617473')" $'cetarktech\tgenai-products\t256'
+assert_equal "$(_gtr_parse_bitbucket_pr_url 'https://bitbucket.org/cetarktech/genai-products/pull-requests/42?tab=commits')" $'cetarktech\tgenai-products\t42'
+if _gtr_parse_bitbucket_pr_url 'https://example.com/pull-requests/256' >/dev/null; then
     fail "non-Bitbucket URL was detected as a pull request"
 fi
+if _gtr_parse_bitbucket_pr_url '256' >/dev/null; then
+    fail "bare PR number was accepted"
+fi
+
+default_home="$test_root/home"
+default_repository="$default_home/git/products/genai-products"
+custom_root="$test_root/custom-repositories"
+custom_repository="$custom_root/services/api"
+outside_repository="$test_root/outside"
+mkdir -p "$default_repository" "$custom_repository" "$outside_repository"
+git init -q "$default_repository"
+git -C "$default_repository" remote add origin work_git:cetarktech/genai-products.git
+git init -q "$custom_repository"
+git -C "$custom_repository" remote add origin https://bitbucket.org/cetarktech/api.git
+
+bkt() {
+    [[ "${(j: :)@}" == "$EXPECTED_BKT_ARGS" ]] || fail "unexpected bkt arguments: $*"
+    printf '%s\n' '{"pull_request":{"source":{"branch":{"name":"feature/from-pr"}}}}'
+}
+
+gtrbranch() {
+    printf '%s|%s\n' "$PWD" "$1"
+}
+
+EXPECTED_BKT_ARGS='pr view 256 --workspace cetarktech --repo genai-products --json'
+gtrpr_result="$(cd "$outside_repository" && HOME="$default_home" gtrpr 'https://bitbucket.org/cetarktech/genai-products/pull-requests/256')"
+assert_equal "$gtrpr_result" "$default_repository|feature/from-pr"
+
+EXPECTED_BKT_ARGS='pr view 42 --workspace cetarktech --repo api --json'
+gtrpr_result="$(cd "$outside_repository" && GTR_REPOSITORY_ROOT="$custom_root" gtrpr 'https://bitbucket.org/cetarktech/api/pull-requests/42')"
+assert_equal "$gtrpr_result" "$custom_repository|feature/from-pr"
+
+gtrbranch() {
+    return 1
+}
+failure_directory="$(cd "$outside_repository" && GTR_REPOSITORY_ROOT="$custom_root" gtrpr 'https://bitbucket.org/cetarktech/api/pull-requests/42' >/dev/null 2>&1 || true; pwd -P)"
+assert_equal "$failure_directory" "$outside_repository"
+
+outside_error="$(cd "$custom_repository" && gtrpr 42 2>&1)" && \
+    fail "bare PR number was accepted inside a Git repository"
+assert_equal "$outside_error" 'invalid Bitbucket pull-request URL: 42'
 
 assert_equal "$(_gtr_jira_issue_key_from_url 'https://example.atlassian.net/browse/ABC-123')" "ABC-123"
 assert_equal "$(_gtr_jira_issue_key_from_url 'https://jira.example.com/browse/team_2-9?focusedCommentId=1')" "TEAM_2-9"
@@ -69,25 +112,12 @@ if gtrnew 'https://example.atlassian.net/browse/ABC-999' 2>/dev/null; then
     fail "Jira lookup failure still created a branch"
 fi
 
-bkt() {
-    [[ "$3" == "$EXPECTED_PR" ]] || fail "expected bkt to receive PR $EXPECTED_PR, got $3"
-    printf '%s\n' '{"pull_request":{"source":{"branch":{"name":"feature/from-pr"}}}}'
-}
-
-gtrbranch() {
-    GTRPR_BRANCH="$1"
-}
-
-EXPECTED_PR=256
-gtrpr 'https://bitbucket.org/cetarktech/genai-products/pull-requests/256#comment-838617473'
-assert_equal "$GTRPR_BRANCH" 'feature/from-pr'
-
-EXPECTED_PR=42
-gtrpr 42
-assert_equal "$GTRPR_BRANCH" 'feature/from-pr'
-
 echo "PASS: Bitbucket PR URL parsing"
-echo "PASS: gtrpr URL and number compatibility"
+echo "PASS: gtrpr full URL handling"
+echo "PASS: gtrpr default repository discovery"
+echo "PASS: gtrpr configurable repository discovery"
+echo "PASS: gtrpr failure directory restoration"
+echo "PASS: bare PR number rejection"
 echo "PASS: Jira URL parsing"
 echo "PASS: Jira summary branch slugging"
 echo "PASS: gtrnew option forwarding"

@@ -1,0 +1,19 @@
+#!/bin/zsh
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source "$HOME/.zsh/gtr-helpers.zsh"
+gtrpr "$PR_MONITOR_PR_URL"
+
+model="${PR_REVIEW_CODEX_MODEL:-gpt-5.6-sol}"
+reasoning_effort="${PR_REVIEW_CODEX_REASONING_EFFORT:-high}"
+prompt='$review-pr Review the pull request at '"$PR_MONITOR_PR_URL"'. Still run every prerequisite and stop at any gate required by the skill.'
+
+print -- "Starting Codex review in $PWD"
+exec "${PR_REVIEW_CODEX_BIN:-codex}" exec \
+    --cd "$PWD" \
+    --model "$model" \
+    --config "model_reasoning_effort=\"$reasoning_effort\"" \
+    "$prompt"

@@ -1,54 +1,72 @@
-_gtr_pr_number_from_arg() {
-    local pattern='^https?://bitbucket\.org/[^/]+/[^/]+/pull-requests/([[:digit:]]+)([/?#].*)?$'
-
-    if [[ "$1" =~ '^[[:digit:]]+$' ]]; then
-        printf '%s\n' "$1"
-        return 0
-    fi
+_gtr_parse_bitbucket_pr_url() {
+    local pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/pull-requests/([[:digit:]]+)([/?#].*)?$'
 
     [[ "$1" =~ $pattern ]] || return 1
-    printf '%s\n' "${match[1]}"
+    printf '%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+}
+
+_gtr_repository_identity() {
+    local repository="${1:-.}"
+    local remote_url
+
+    remote_url="$(git -C "$repository" remote get-url origin 2>/dev/null)" || return 1
+    remote_url="${remote_url%.git}"
+    [[ "$remote_url" =~ '[/:]([^/]+)/([^/]+)$' ]] || return 1
+    printf '%s/%s\n' "${match[1]}" "${match[2]}"
+}
+
+_gtr_find_base_repository() {
+    local repository_root="$1" expected_identity="$2"
+    local git_directory candidate identity
+    local -a matches=()
+
+    [[ -d "$repository_root" ]] || {
+        echo "repository root does not exist: $repository_root" >&2
+        return 1
+    }
+
+    while IFS= read -r -d $'\0' git_directory; do
+        candidate="${git_directory:h}"
+        identity="$(_gtr_repository_identity "$candidate" 2>/dev/null || true)"
+        [[ "$identity" == "$expected_identity" ]] && matches+=("$candidate")
+    done < <(find "$repository_root" -maxdepth 5 -type d -name .git -print0 2>/dev/null)
+
+    if (( ${#matches} == 0 )); then
+        echo "no base checkout under $repository_root has origin repository '$expected_identity'" >&2
+        return 1
+    fi
+    if (( ${#matches} > 1 )); then
+        echo "multiple base checkouts under $repository_root have origin repository '$expected_identity':" >&2
+        printf '  %s\n' "${matches[@]}" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${matches[1]}"
 }
 
 gtrpr() {
-    local branch workspace repo remote_url pr_number
+    local branch workspace repo pr_number pr_fields repository_identity base_repository gtr_status
+    local start_directory="$PWD"
+    local repository_root="${GTR_REPOSITORY_ROOT:-$HOME/git}"
 
     if [[ $# -ne 1 ]]; then
-        echo "usage: gtrpr <pr-number-or-bitbucket-url>" >&2
+        echo "usage: gtrpr <bitbucket-pull-request-url>" >&2
         return 1
     fi
 
-    if ! pr_number="$(_gtr_pr_number_from_arg "$1")"; then
-        echo "invalid PR number or Bitbucket pull-request URL: $1" >&2
+    if ! pr_fields="$(_gtr_parse_bitbucket_pr_url "$1")"; then
+        echo "invalid Bitbucket pull-request URL: $1" >&2
         return 1
     fi
+    IFS=$'\t' read -r workspace repo pr_number <<< "$pr_fields"
 
     if ! command -v bkt >/dev/null 2>&1; then
         echo "bkt is not installed" >&2
         return 1
     fi
 
-    remote_url="$(git remote get-url origin 2>/dev/null)"
-    if [[ -z "$remote_url" ]]; then
-        echo "could not determine origin remote URL" >&2
-        return 1
-    fi
-
-    # Strip trailing .git suffix if present
-    remote_url="${remote_url%.git}"
-
-    # Extract workspace/repo from common remote URL formats:
-    #   work_git:workspace/repo
-    #   git@bitbucket.org:workspace/repo
-    #   https://bitbucket.org/workspace/repo
-    #   ssh://git@bitbucket.org/workspace/repo
-    if [[ "$remote_url" =~ [:/]([^/]+)/([^/]+)$ ]]; then
-        workspace="${match[1]}"
-        repo="${match[2]}"
-    else
-        echo "could not parse workspace/repo from remote URL: $remote_url" >&2
-        return 1
-    fi
+    repository_identity="$workspace/$repo"
+    base_repository="$(_gtr_find_base_repository "$repository_root" "$repository_identity")" || return $?
 
     local pr_json
     pr_json="$(bkt pr view "$pr_number" --workspace "$workspace" --repo "$repo" --json 2>&1)"
@@ -76,7 +94,14 @@ gtrpr() {
     fi
 
     branch="${branch#refs/heads/}"
+    cd -- "$base_repository" || return $?
     gtrbranch "$branch"
+    gtr_status=$?
+
+    if (( gtr_status != 0 )) && [[ "$PWD" == "$base_repository" ]]; then
+        cd -- "$start_directory" || return $?
+    fi
+    return $gtr_status
 }
 
 _gtr_fetch_origin_for_branch_check() {
