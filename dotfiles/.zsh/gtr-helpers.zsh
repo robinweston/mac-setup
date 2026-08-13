@@ -1,8 +1,14 @@
-_gtr_parse_bitbucket_pr_url() {
-    local pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/pull-requests/([[:digit:]]+)([/?#].*)?$'
+_gtr_parse_bitbucket_url() {
+    local pr_pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/pull-requests/([[:digit:]]+)([/?#].*)?$'
+    local branch_pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/branch/([^?#]+)([?#].*)?$'
 
-    [[ "$1" =~ $pattern ]] || return 1
-    printf '%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+    if [[ "$1" =~ $pr_pattern ]]; then
+        printf 'pull-request\t%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+    elif [[ "$1" =~ $branch_pattern ]]; then
+        printf 'branch\t%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+    else
+        return 1
+    fi
 }
 
 _gtr_repository_identity() {
@@ -44,34 +50,17 @@ _gtr_find_base_repository() {
     printf '%s\n' "${matches[1]}"
 }
 
-gtrpr() {
-    local branch workspace repo pr_number pr_fields repository_identity base_repository gtr_status
-    local start_directory="$PWD"
-    local repository_root="${GTR_REPOSITORY_ROOT:-$HOME/git}"
-
-    if [[ $# -ne 1 ]]; then
-        echo "usage: gtrpr <bitbucket-pull-request-url>" >&2
-        return 1
-    fi
-
-    if ! pr_fields="$(_gtr_parse_bitbucket_pr_url "$1")"; then
-        echo "invalid Bitbucket pull-request URL: $1" >&2
-        return 1
-    fi
-    IFS=$'\t' read -r workspace repo pr_number <<< "$pr_fields"
+_gtr_branch_from_bitbucket_pr() {
+    local workspace="$1" repo="$2" pr_number="$3"
+    local pr_json branch
 
     if ! command -v bkt >/dev/null 2>&1; then
         echo "bkt is not installed" >&2
         return 1
     fi
 
-    repository_identity="$workspace/$repo"
-    base_repository="$(_gtr_find_base_repository "$repository_root" "$repository_identity")" || return $?
-
-    local pr_json
-    pr_json="$(bkt pr view "$pr_number" --workspace "$workspace" --repo "$repo" --json 2>&1)"
-
-    if [[ $? -ne 0 || -z "$pr_json" ]]; then
+    if ! pr_json="$(bkt pr view "$pr_number" --workspace "$workspace" --repo "$repo" --json 2>&1)" ||
+       [[ -z "$pr_json" ]]; then
         echo "bkt pr view failed:" >&2
         echo "$pr_json" >&2
         return 1
@@ -93,15 +82,7 @@ gtrpr() {
         return 1
     fi
 
-    branch="${branch#refs/heads/}"
-    cd -- "$base_repository" || return $?
-    gtrbranch "$branch"
-    gtr_status=$?
-
-    if (( gtr_status != 0 )) && [[ "$PWD" == "$base_repository" ]]; then
-        cd -- "$start_directory" || return $?
-    fi
-    return $gtr_status
+    printf '%s\n' "${branch#refs/heads/}"
 }
 
 _gtr_fetch_origin_for_branch_check() {
@@ -115,14 +96,9 @@ _gtr_branch_has_worktree() {
     git worktree list --porcelain | grep -Fqx "branch refs/heads/$1"
 }
 
-gtrbranch() {
+_gtr_open_remote_branch() {
     local branch="$1"
-
-    if [[ $# -ne 1 ]]; then
-        echo "usage: gtrbranch <branch>" >&2
-        return 1
-    fi
-
+    shift
     _gtr_fetch_origin_for_branch_check || return $?
 
     if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
@@ -138,7 +114,7 @@ gtrbranch() {
     fi
 
     echo "Creating worktree for existing branch $branch"
-    gtr new --cd "$branch" --track remote --no-fetch || return $?
+    gtr new --cd "$branch" "$@" --track remote --no-fetch || return $?
     git gtr editor "$branch"
 }
 
@@ -190,39 +166,70 @@ _gtr_branch_from_jira_issue() {
     fi
 }
 
-gtrnew() {
-    local branch issue_key
-    local -a gtr_args
-
-    if [[ $# -lt 1 || "$1" == -* ]]; then
-        echo "usage: gtrnew <branch-or-jira-url> [options]" >&2
-        return 1
-    fi
-
-    branch="$1"
-    if issue_key="$(_gtr_jira_issue_key_from_url "$branch")"; then
-        branch="$(_gtr_branch_from_jira_issue "$issue_key")" || return $?
-        echo "Using branch name: $branch"
-    fi
-
-    gtr_args=("$@")
-    gtr_args[1]="$branch"
-
+_gtr_create_local_branch() {
+    local branch="$1"
+    shift
     _gtr_fetch_origin_for_branch_check || return $?
 
     if git show-ref --verify --quiet "refs/heads/$branch" ||
        git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-        echo "branch '$branch' already exists; use gtrbranch $branch" >&2
+        echo "branch '$branch' already exists" >&2
         return 1
     fi
 
-    gtr new --cd "${gtr_args[@]}" --track none --no-fetch || return $?
+    gtr new --cd "$branch" "$@" --track none --no-fetch || return $?
 
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return $?
     git gtr editor "$branch"
 }
 
-gtrprune() {
+gtr-new() {
+    local target kind workspace repo value url_fields repository_identity base_repository
+    local branch issue_key gtr_status
+    local start_directory="$PWD"
+    local repository_root="${GTR_REPOSITORY_ROOT:-$HOME/git}"
+
+    if [[ $# -lt 1 || "$1" == -* ]]; then
+        echo "usage: gtr-new <branch-or-bitbucket-or-jira-url> [options]" >&2
+        return 1
+    fi
+
+    target="$1"
+    if url_fields="$(_gtr_parse_bitbucket_url "$target")"; then
+        IFS=$'\t' read -r kind workspace repo value <<< "$url_fields"
+        repository_identity="$workspace/$repo"
+        base_repository="$(_gtr_find_base_repository "$repository_root" "$repository_identity")" || return $?
+
+        if [[ "$kind" == pull-request ]]; then
+            branch="$(_gtr_branch_from_bitbucket_pr "$workspace" "$repo" "$value")" || return $?
+        else
+            branch="${value#refs/heads/}"
+        fi
+
+        cd -- "$base_repository" || return $?
+        _gtr_open_remote_branch "$branch" "${@:2}"
+        gtr_status=$?
+
+        if (( gtr_status != 0 )) && [[ "$PWD" == "$base_repository" ]]; then
+            cd -- "$start_directory" || return $?
+        fi
+        return $gtr_status
+    fi
+
+    branch="$target"
+    if issue_key="$(_gtr_jira_issue_key_from_url "$target")"; then
+        git rev-parse --show-toplevel >/dev/null 2>&1 || {
+            echo "a Jira URL requires running gtr-new inside a Git worktree" >&2
+            return 1
+        }
+        branch="$(_gtr_branch_from_jira_issue "$issue_key")" || return $?
+        echo "Using branch name: $branch"
+    fi
+
+    _gtr_create_local_branch "$branch" "${@:2}"
+}
+
+gtr-prune() {
     local dry_run=0 removed=0 is_first=1
     local wt_path branch wt_status upstream
     local -a prune_branches
@@ -231,7 +238,7 @@ gtrprune() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run|-n) dry_run=1; shift ;;
-            *) echo "usage: gtrprune [--dry-run|-n]" >&2; return 1 ;;
+            *) echo "usage: gtr-prune [--dry-run|-n]" >&2; return 1 ;;
         esac
     done
 

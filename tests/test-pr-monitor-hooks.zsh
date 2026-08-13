@@ -34,9 +34,9 @@ return 1
 EOF
 
 cat > "$shell_init" <<'EOF'
-gtrpr() {
+gtr-new() {
     [[ "$1" == "$TEST_PR_URL" ]] || {
-        print -u2 -- "gtrpr received the wrong URL: $1"
+        print -u2 -- "gtr-new received the wrong URL: $1"
         return 1
     }
     cd -- "$TEST_PR_WORKTREE"
@@ -76,4 +76,4 @@ fi
 
 print -- "PASS: event-name dispatch"
 print -- "PASS: unconfigured event no-op"
-print -- "PASS: gtrpr-to-Codex review handoff"
+print -- "PASS: gtr-new-to-Codex review handoff"

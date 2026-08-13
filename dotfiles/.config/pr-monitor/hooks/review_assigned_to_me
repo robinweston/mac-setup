@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 source "$HOME/.zsh/gtr-helpers.zsh"
-gtrpr "$PR_MONITOR_PR_URL"
+gtr-new "$PR_MONITOR_PR_URL"
 
 model="${PR_REVIEW_CODEX_MODEL:-gpt-5.6-sol}"
 reasoning_effort="${PR_REVIEW_CODEX_REASONING_EFFORT:-high}"
