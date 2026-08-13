@@ -94,16 +94,27 @@ _gtr_fetch_origin_for_branch_check() {
 
 _gtr_ensure_shell_integration() {
     local init_file="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/init-gtr.zsh"
+    local integration_status added_compdef=0
 
     # `gtr` is a shell function, not the git-gtr executable. Non-interactive
     # callers such as PR Monitor do not load .zshrc, so initialize it here.
     (( $+functions[gtr] )) && return 0
 
-    if [[ -r "$init_file" ]]; then
-        source "$init_file" || return $?
-    else
-        eval "$(git gtr init zsh)" || return $?
+    # The generated integration registers completions after defining `gtr`.
+    # `compdef` is unavailable before compinit runs and is unnecessary here.
+    if (( ! $+functions[compdef] )); then
+        compdef() { return 0 }
+        added_compdef=1
     fi
+
+    if [[ -r "$init_file" ]]; then
+        source "$init_file" && integration_status=0 || integration_status=$?
+    else
+        eval "$(git gtr init zsh)" && integration_status=0 || integration_status=$?
+    fi
+
+    (( added_compdef )) && unfunction compdef
+    (( integration_status == 0 )) || return $integration_status
 
     (( $+functions[gtr] )) || {
         echo "could not initialize the gtr shell integration" >&2

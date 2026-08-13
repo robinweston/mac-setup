@@ -56,6 +56,7 @@ cat > "$gtr_cache" <<'EOF'
 gtr() {
     return 0
 }
+compdef _gtr_completion gtr
 EOF
 
 HOME="$fake_home" \
@@ -66,6 +67,7 @@ REPO_GTR_HELPERS="$repo_root/dotfiles/.zsh/gtr-helpers.zsh" \
     (( $+functions[gtr] )) && exit 1
     _gtr_ensure_shell_integration
     (( $+functions[gtr] ))
+    (( ! $+functions[compdef] ))
 ' || fail "gtr shell integration was not loaded for a non-interactive caller"
 
 output="$(
