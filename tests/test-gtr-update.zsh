@@ -4,7 +4,7 @@ set -eu
 repo_root="$(cd "${0:A:h}/.." && pwd -P)"
 source "$repo_root/dotfiles/.zsh/gtr-helpers.zsh"
 
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/git-update.XXXXXX")"
+test_root="$(mktemp -d "${TMPDIR:-/tmp}/gtr-update.XXXXXX")"
 test_root="${test_root:A}"
 trap 'rm -rf -- "$test_root"' EXIT
 
@@ -74,42 +74,44 @@ gtr() {
 }
 
 starting_directory="$repository_a_worktree"
-output_file="$test_root/git-update-output.log"
+output_file="$test_root/gtr-update-output.log"
 (
     cd "$starting_directory"
-    git-update
-    [[ "$PWD" == "$repository_a" ]] || fail "git-update did not leave the shell in the base worktree"
+    gtr-update
+    [[ "$PWD" == "$repository_a" ]] || fail "gtr-update did not leave the shell in the base worktree"
 ) > "$output_file"
 output="$(<"$output_file")"
 
 [[ "$(wc -l < "$pull_log" | tr -d ' ')" == 3 ]] || \
-    fail "git-update did not pull the base and both remaining worktrees"
+    fail "gtr-update did not pull the base and both remaining worktrees"
 [[ "$(sed -n '1p' "$action_log")" == "gtr-cd-main:$repository_a_worktree" ]] || \
-    fail "git-update did not use gtr cd main from the linked worktree"
+    fail "gtr-update did not use gtr cd main from the linked worktree"
 [[ "$(sed -n '2p' "$action_log")" == "pull:$repository_a" ]] || \
-    fail "git-update did not pull the base after changing worktrees"
+    fail "gtr-update did not pull the base after changing worktrees"
 [[ "$(sed -n '3p' "$action_log")" == "prune:$repository_a" ]] || \
-    fail "git-update did not prune after pulling the base"
+    fail "gtr-update did not prune after pulling the base"
 remaining_actions="$(tail -n +4 "$action_log" | sort)"
 expected_remaining_actions="$(printf '%s\n' "pull:$repository_a_worktree" "pull:$repository_a_worktree_two" | sort)"
 [[ "$remaining_actions" == "$expected_remaining_actions" ]] || \
-    fail "git-update did not pull each remaining worktree after pruning"
+    fail "gtr-update did not pull each remaining worktree after pruning"
 [[ "$(sed -n '1,2p' "$parallel_log")" != *"finish:"* ]] || \
-    fail "git-update did not start remaining worktree pulls concurrently"
+    fail "gtr-update did not start remaining worktree pulls concurrently"
 [[ "$(<"$pull_log")" != *"$repository_a_stale_worktree"* ]] || \
-    fail "git-update pulled a worktree removed by gtr-prune"
+    fail "gtr-update pulled a worktree removed by gtr-prune"
 assert_contains "$output" "Updating $repository_a"
 assert_contains "$output" "Updated: 1"
 assert_contains "$output" "Already current: 2"
 assert_contains "$output" "Pruned successfully: 1"
 assert_contains "$output" "Updating 2 remaining worktree(s) in parallel"
 
-usage_output="$(git-update "$repository_a" 2>&1)" && fail "git-update accepted a repository argument"
-[[ "$usage_output" == "usage: git-update" ]] || \
-    fail "git-update did not report usage when given an argument"
+usage_output="$(gtr-update "$repository_a" 2>&1)" && fail "gtr-update accepted a repository argument"
+[[ "$usage_output" == "usage: gtr-update" ]] || \
+    fail "gtr-update did not report usage when given an argument"
+(( $+functions[git-update] == 0 )) || fail "the old git-update command is still defined"
 (( $+functions[update-all] == 0 )) || fail "the old update-all command is still defined"
 
-echo "PASS: git-update uses the current worktree and moves to its base"
+echo "PASS: gtr-update uses the current worktree and moves to its base"
+echo "PASS: the old git-update command was removed"
 echo "PASS: the old update-all command was removed"
-echo "PASS: git-update runs base pull, prune, then remaining worktree pulls"
-echo "PASS: git-update pulls remaining worktrees in parallel"
+echo "PASS: gtr-update runs base pull, prune, then remaining worktree pulls"
+echo "PASS: gtr-update pulls remaining worktrees in parallel"

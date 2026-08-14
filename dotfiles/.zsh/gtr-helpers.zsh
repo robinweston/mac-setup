@@ -265,7 +265,7 @@ function gtr-new {
 # gtr-new has a chance to parse them.
 alias gtr-new='noglob gtr-new'
 
-_git_update_display_path() {
+_gtr_update_display_path() {
     local display_target="$1"
 
     if [[ "$display_target" == "$HOME" ]]; then
@@ -277,7 +277,7 @@ _git_update_display_path() {
     fi
 }
 
-git-update() {
+gtr-update() {
     setopt localoptions nobgnice
 
     local repository worktree base_worktree field output_file current_branch
@@ -289,12 +289,12 @@ git-update() {
     local -a prune_succeeded=() prune_failed=()
 
     if (( $# != 0 )); then
-        echo "usage: git-update" >&2
+        echo "usage: gtr-update" >&2
         return 1
     fi
 
     repository="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-        echo "git-update must be run inside a Git worktree" >&2
+        echo "gtr-update must be run inside a Git worktree" >&2
         return 1
     }
     current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
@@ -305,9 +305,9 @@ git-update() {
     fi
     base_worktree="${PWD:A}"
 
-    echo "Updating $(_git_update_display_path "$base_worktree")..."
+    echo "Updating $(_gtr_update_display_path "$base_worktree")..."
     worktree="$base_worktree"
-    display="$(_git_update_display_path "$worktree")"
+    display="$(_gtr_update_display_path "$worktree")"
     branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
     [[ -n "$branch" ]] || branch="detached"
     before_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
@@ -333,7 +333,7 @@ git-update() {
         echo "already current"
     fi
 
-    display="$(_git_update_display_path "$base_worktree")"
+    display="$(_gtr_update_display_path "$base_worktree")"
     printf '  Pruning %s ... ' "$display"
     if prune_output="$(cd -- "$base_worktree" && gtr-prune 2>&1)"; then
         prune_status=0
@@ -371,11 +371,11 @@ git-update() {
     # Pull independent worktrees concurrently. Each job gets its own output
     # file so failures can still be attributed and summarized deterministically.
     for worktree in "${worktrees[@]}"; do
-        display="$(_git_update_display_path "$worktree")"
+        display="$(_gtr_update_display_path "$worktree")"
         branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
         [[ -n "$branch" ]] || branch="detached"
         before_head="$(git -C "$worktree" rev-parse --verify HEAD 2>/dev/null || true)"
-        output_file="$(mktemp "${TMPDIR:-/tmp}/git-update.XXXXXX")" || {
+        output_file="$(mktemp "${TMPDIR:-/tmp}/gtr-update.XXXXXX")" || {
             echo "could not create temporary output file" >&2
             return 1
         }
