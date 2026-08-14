@@ -3,7 +3,7 @@
 set -eu
 
 repo_root="$(cd "${0:A:h}/.." && pwd -P)"
-hooks="$repo_root/dotfiles/.config/pr-monitor/hooks"
+hooks="$repo_root/dotfiles/.hooks"
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/pr-monitor-hooks.XXXXXX")"
 test_root="${test_root:A}"
 trap 'rm -rf -- "$test_root"' EXIT
@@ -86,6 +86,10 @@ output="$(
 [[ "$output" == *"codex-cwd=$worktree"* ]] || fail "Codex received the wrong working directory"
 [[ "$output" == *'$review-pr Review the pull request at https://bitbucket.org/cetarktech/api/pull-requests/42'* ]] || fail "review-pr skill prompt was not supplied"
 [[ "$output" == *'model_reasoning_effort="high"'* ]] || fail "high reasoning effort was not supplied"
+[[ "$output" == *'--sandbox'*$'\n''workspace-write'* ]] || fail "workspace-write sandbox was not supplied"
+[[ "$output" == *'sandbox_workspace_write.network_access=true'* ]] || fail "network access was not supplied"
+[[ "$output" == *'--add-dir'*$'\n'"$base_repository/.git"* ]] || fail "shared Git metadata access was not supplied"
+[[ "$output" == *'--add-dir'*$'\n'"$fake_home/.config/bkt"* ]] || fail "bkt config access was not supplied"
 
 noop_output="$(PR_MONITOR_EVENT=build_failed_on_my_pr "$hooks/run")"
 [[ "$noop_output" == 'No dotfiles hook configured for build_failed_on_my_pr' ]] || fail "unconfigured event was not ignored"

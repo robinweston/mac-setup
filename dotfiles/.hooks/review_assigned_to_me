@@ -9,11 +9,17 @@ gtr-new "$PR_MONITOR_PR_URL"
 
 model="${PR_REVIEW_CODEX_MODEL:-gpt-5.6-sol}"
 reasoning_effort="${PR_REVIEW_CODEX_REASONING_EFFORT:-high}"
+git_common_directory="$(git rev-parse --path-format=absolute --git-common-dir)"
+bkt_config_directory="$HOME/.config/bkt"
 prompt='$review-pr Review the pull request at '"$PR_MONITOR_PR_URL"'. Still run every prerequisite and stop at any gate required by the skill.'
 
 print -- "Starting Codex review in $PWD"
 exec "${PR_REVIEW_CODEX_BIN:-codex}" exec \
     --cd "$PWD" \
     --model "$model" \
+    --sandbox workspace-write \
+    --add-dir "$git_common_directory" \
+    --add-dir "$bkt_config_directory" \
     --config "model_reasoning_effort=\"$reasoning_effort\"" \
+    --config 'sandbox_workspace_write.network_access=true' \
     "$prompt"
