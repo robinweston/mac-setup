@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import readline from 'node:readline';
 
 const DESKTOP_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex';
@@ -183,6 +184,21 @@ function completedAgentMessage(client, threadId, turnId) {
     .at(-1) ?? '';
 }
 
+export function workspaceWriteSandboxPolicy({ writableRoots = [], networkAccess = false } = {}) {
+  const normalizedRoots = [...new Set(writableRoots.map((root) => {
+    if (typeof root !== 'string' || !path.isAbsolute(root)) {
+      throw new AppServerError(`Writable root must be an absolute path: ${root}`);
+    }
+    return path.resolve(root);
+  }))];
+  if (normalizedRoots.length === 0 && !networkAccess) return null;
+  return {
+    type: 'workspaceWrite',
+    writableRoots: normalizedRoots,
+    networkAccess: Boolean(networkAccess),
+  };
+}
+
 export async function runNewThread({
   prompt,
   cwd,
@@ -190,6 +206,8 @@ export async function runNewThread({
   codexBin,
   approvalPolicy = DEFAULT_APPROVAL_POLICY,
   sandbox = 'workspace-write',
+  writableRoots = [],
+  networkAccess = false,
   model,
   effort,
 } = {}) {
@@ -207,6 +225,13 @@ export async function runNewThread({
       input: [{ type: 'text', text: prompt }],
       approvalPolicy,
     };
+    const sandboxPolicy = workspaceWriteSandboxPolicy({ writableRoots, networkAccess });
+    if (sandboxPolicy) {
+      if (sandbox !== 'workspace-write') {
+        throw new AppServerError('--add-dir and --network-access require --sandbox workspace-write');
+      }
+      turnParams.sandboxPolicy = sandboxPolicy;
+    }
     if (effort) turnParams.effort = effort;
     const turnStarted = idsFrom(await client.request('turn/start', turnParams), 'turn');
     const turnId = turnStarted.id;

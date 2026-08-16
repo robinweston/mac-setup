@@ -14,12 +14,13 @@ bkt_config_directory="$HOME/.config/bkt"
 prompt='$review-pr Review the pull request at '"$PR_MONITOR_PR_URL"'. Still run every prerequisite and stop at any gate required by the skill.'
 
 print -- "Starting Codex review in $PWD"
-exec "${PR_REVIEW_CODEX_BIN:-codex}" exec \
-    --cd "$PWD" \
+exec "${PR_REVIEW_CODEX_BIN:-codex-desktop-cli}" threads new \
+    --project "$PWD" \
+    --prompt "$prompt" \
     --model "$model" \
     --sandbox workspace-write \
+    --approval-policy never \
     --add-dir "$git_common_directory" \
     --add-dir "$bkt_config_directory" \
-    --config "model_reasoning_effort=\"$reasoning_effort\"" \
-    --config 'sandbox_workspace_write.network_access=true' \
-    "$prompt"
+    --network-access \
+    --reasoning-effort "$reasoning_effort"

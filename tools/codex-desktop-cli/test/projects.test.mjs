@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { DEFAULT_APPROVAL_POLICY } from '../lib/app-server.mjs';
+import { DEFAULT_APPROVAL_POLICY, workspaceWriteSandboxPolicy } from '../lib/app-server.mjs';
 import { addProject, findProject, parseProjectState, projectForCwd } from '../lib/projects.mjs';
 
 function state(projects = {}, order = [], assignments = {}) {
@@ -16,6 +16,19 @@ function state(projects = {}, order = [], assignments = {}) {
 
 test('defaults new threads to interactive approval', () => {
   assert.equal(DEFAULT_APPROVAL_POLICY, 'unlessTrusted');
+});
+
+test('builds workspace-write policy with network and additional roots', () => {
+  assert.deepEqual(workspaceWriteSandboxPolicy({
+    writableRoots: ['/tmp/repository/.git/', '/tmp/repository/.git', '/tmp/home/.config/bkt'],
+    networkAccess: true,
+  }), {
+    type: 'workspaceWrite',
+    writableRoots: ['/tmp/repository/.git', '/tmp/home/.config/bkt'],
+    networkAccess: true,
+  });
+  assert.equal(workspaceWriteSandboxPolicy(), null);
+  assert.throws(() => workspaceWriteSandboxPolicy({ writableRoots: ['relative'] }), /absolute path/);
 });
 
 test('validates and orders Desktop project state', () => {

@@ -38,6 +38,13 @@ codex-desktop-cli threads new \
   --project /absolute/path/to/project \
   --prompt "Run the test suite"
 
+# Grant extra writable roots and network access to the workspace-write sandbox
+codex-desktop-cli threads new \
+  --project /absolute/path/to/project \
+  --prompt "Review the pull request" \
+  --add-dir /absolute/path/to/shared/git-metadata \
+  --network-access
+
 # A saved project ID works too
 codex-desktop-cli threads new \
   --project 50ae409f-e574-47c3-bbd5-d50bb0fa988f \
@@ -53,6 +60,8 @@ override the default state directory, Codex executable, and application path.
 New threads default to the app-server `unlessTrusted` approval policy, which
 asks the user to approve commands that are not already trusted. Pass
 `--approval-policy never` only when non-interactive execution is intentional.
+Repeat `--add-dir` to grant additional writable roots. `--network-access` and
+`--add-dir` require the `workspace-write` sandbox.
 
 ## How it works
 

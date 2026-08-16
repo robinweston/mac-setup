@@ -10,7 +10,7 @@ Usage:
   codex-desktop-cli projects list [--json]
   codex-desktop-cli projects add PATH [--create] [--timeout MS] [--json]
   codex-desktop-cli threads list [--project ID|PATH] [--limit N] [--archived] [--json]
-  codex-desktop-cli threads new --project ID|PATH --prompt TEXT [--create] [--sandbox MODE] [--timeout MS] [--json]
+  codex-desktop-cli threads new --project ID|PATH --prompt TEXT [--create] [--sandbox MODE] [--add-dir PATH] [--network-access] [--timeout MS] [--json]
 
 Environment:
   CODEX_HOME         Codex state home (default: ~/.codex)
@@ -25,7 +25,8 @@ and creation use the supported codex app-server JSONL interface.
 function parseArgs(argv) {
   const [noun, verb, ...tokens] = argv;
   const options = { _: [] };
-  const boolean = new Set(['json', 'archived', 'create', 'help']);
+  const boolean = new Set(['json', 'archived', 'create', 'help', 'network-access']);
+  const repeatable = new Set(['add-dir']);
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i];
     if (!token.startsWith('--')) {
@@ -39,7 +40,11 @@ function parseArgs(argv) {
     }
     const value = inline ?? tokens[++i];
     if (value == null || value.startsWith('--')) throw new Error(`Missing value for --${key}`);
-    options[key] = value;
+    if (repeatable.has(key)) {
+      (options[key] ??= []).push(value);
+    } else {
+      options[key] = value;
+    }
   }
   return { noun, verb, options };
 }
@@ -103,6 +108,8 @@ async function run(noun, verb, options) {
       create: Boolean(options.create),
       approvalPolicy: options['approval-policy'] ?? DEFAULT_APPROVAL_POLICY,
       sandbox: options.sandbox ?? 'workspace-write',
+      writableRoots: options['add-dir'] ?? [],
+      networkAccess: Boolean(options['network-access']),
       model: options.model,
       effort: options['reasoning-effort'],
     });
