@@ -3,6 +3,7 @@
 # Exit immediately if any command exits with a non-zero status
 set -e
 
+SETUP_DIR="${0:A:h}"
 DOTFILES_ONLY=false
 
 for arg in "$@"; do
@@ -55,7 +56,7 @@ fi
 
 echo "Copying dotfiles"
 # Use -u to only update if files are newer, making it more idempotent
-rsync -av --progress --exclude=.DS_Store ./dotfiles/ ~/
+rsync -av --progress --exclude=.DS_Store "$SETUP_DIR/dotfiles/" ~/
 
 # VS Code uses Library/Application Support on macOS. Keep the source settings
 # with the other dotfiles and link VS Code's expected path to it.
@@ -136,6 +137,10 @@ CASKS=(
 
 echo "Installing formulae..."
 brew install ${FORMULAE[@]}
+
+# Install the Codex Desktop project/thread CLI on Homebrew's PATH.
+echo "Installing codex-desktop-cli..."
+"$SETUP_DIR/tools/codex-desktop-cli/install.sh"
 
 # Install git-worktree-runner (git gtr)
 echo "Installing git-worktree-runner (git gtr)..."
