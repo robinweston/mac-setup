@@ -1,12 +1,13 @@
 # Codex Desktop projects and threads CLI
 
-`codex-desktop-cli` is an npm-dependency-free macOS command-line adapter for four practical
+`codex-desktop-cli` is an npm-dependency-free macOS command-line adapter for five practical
 Codex Desktop operations:
 
 1. List saved local projects.
 2. Register a local project through ChatGPT.app.
 3. Create a thread in a project and immediately submit its first prompt.
 4. List threads, optionally filtered by project.
+5. Archive every active thread in a project without removing the project.
 
 It targets the installed ChatGPT.app/Codex Desktop build through the supported
 Codex app-server interface.
@@ -53,6 +54,10 @@ codex-desktop-cli threads new \
 # 4. List threads
 codex-desktop-cli threads list --limit 20
 codex-desktop-cli threads list --project /absolute/path/to/project
+
+# 5. Preview, then archive every active thread in the project
+codex-desktop-cli projects archive-threads /absolute/path/to/project --dry-run
+codex-desktop-cli projects archive-threads /absolute/path/to/project
 ```
 
 All output is JSON. `CODEX_HOME`, `CODEX_BIN`, and `CODEX_DESKTOP_APP` can
@@ -83,6 +88,10 @@ It then polls the read-only state until ChatGPT.app has registered the exact
 canonical path and returns the app-created project ID. Missing directories are
 rejected unless `--create` is explicitly supplied.
 
+`projects archive-threads` finds every saved project whose root exactly matches
+the supplied path and archives its active threads. It does not remove or modify
+the Desktop project metadata.
+
 ### Threads
 
 `threads list` starts the Desktop-bundled `codex app-server` and calls the
@@ -101,10 +110,16 @@ Desktop thread-to-project assignment. The tool therefore never edits global
 state while the app is running. Cwd matching is reported honestly rather than
 presented as an explicit Desktop assignment.
 
+Project archival scans every active app-server page and includes every source
+kind. Explicit project assignments take precedence over cwd matching; otherwise
+the most-specific containing project owns the thread. `thread/archive` is issued
+only for the roots of selected descendant trees because app-server also attempts
+to archive spawned descendants with their parent.
+
 ## Safety
 
-- No Codex database, transcript, session, rollout, or global-state file is
-  edited by this tool.
+- Thread archival is reversible with app-server's `thread/unarchive` operation.
+- Global project state is never edited by this tool.
 - Project directory creation occurs only with explicit `--create`.
 - Project registration may focus/open ChatGPT.app as a normal macOS side effect.
 - Thread creation submits the prompt immediately and may perform work according

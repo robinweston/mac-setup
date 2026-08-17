@@ -437,10 +437,27 @@ gtr-update() {
     return 0
 }
 
+_gtr_prune_archive_codex_threads() {
+    local project_path="$1" dry_run="${2:-0}"
+    local -a args=(projects archive-threads "$project_path")
+
+    if ! command -v codex-desktop-cli >/dev/null 2>&1; then
+        echo "Warning: codex-desktop-cli is unavailable; Codex task archival was skipped for $project_path" >&2
+        return 0
+    fi
+
+    [[ "$dry_run" -eq 1 ]] && args+=(--dry-run)
+    if ! codex-desktop-cli "${args[@]}"; then
+        echo "Warning: worktree removal succeeded, but Codex task archival failed for $project_path" >&2
+    fi
+    return 0
+}
+
 gtr-prune() {
     local dry_run=0 removed=0 is_first=1
     local wt_path branch wt_status upstream
     local -a prune_branches
+    local -a prune_paths
     local -a stale_paths
 
     while [[ $# -gt 0 ]]; do
@@ -491,6 +508,7 @@ gtr-prune() {
 
         echo "  upstream $upstream gone, marking for removal"
         prune_branches+=("$branch")
+        prune_paths+=("$wt_path")
     done < <(git gtr list --porcelain)
 
     if [[ ${#prune_branches[@]} -eq 0 && ${#stale_paths[@]} -eq 0 ]]; then
@@ -506,6 +524,11 @@ gtr-prune() {
             printf '  %s (stale)\n' "${wt_path##*/}"
         done
         echo ""
+        echo "Codex task archival plan:"
+        for wt_path in "${prune_paths[@]}" "${stale_paths[@]}"; do
+            _gtr_prune_archive_codex_threads "$wt_path" 1
+        done
+        echo ""
         echo "Run without --dry-run to remove"
         return 0
     fi
@@ -518,18 +541,28 @@ gtr-prune() {
         for wt_path in "${stale_paths[@]}"; do
             echo "==> Removing stale directory: ${wt_path##*/}"
             if [[ -d "$wt_path" ]]; then
-                rm -rf "$wt_path" && ((removed += 1)) || echo "Failed to remove $wt_path" >&2
+                if rm -rf "$wt_path"; then
+                    ((removed += 1))
+                    _gtr_prune_archive_codex_threads "$wt_path"
+                else
+                    echo "Failed to remove $wt_path" >&2
+                fi
             else
                 ((removed += 1))
+                _gtr_prune_archive_codex_threads "$wt_path"
             fi
         done
     fi
 
     # Remove worktrees whose upstream is gone
-    for branch in "${prune_branches[@]}"; do
+    local index
+    for (( index = 1; index <= ${#prune_branches[@]}; index++ )); do
+        branch="${prune_branches[$index]}"
+        wt_path="${prune_paths[$index]}"
         echo "==> Removing worktree: $branch"
         if git gtr rm "$branch" --delete-branch --force --yes; then
             ((removed += 1))
+            _gtr_prune_archive_codex_threads "$wt_path"
         else
             echo "Failed to remove worktree for $branch" >&2
         fi

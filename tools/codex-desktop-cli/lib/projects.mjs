@@ -69,11 +69,15 @@ function samePath(left, right) {
   return path.resolve(left) === path.resolve(right);
 }
 
-export function findProject(projects, idOrPath) {
-  const byId = projects.find((project) => project.id === idOrPath);
-  if (byId) return byId;
+export function findProjects(projects, idOrPath) {
+  const byId = projects.filter((project) => project.id === idOrPath);
+  if (byId.length > 0) return byId;
   const candidate = path.resolve(idOrPath);
-  return projects.find((project) => project.rootPaths.some((root) => samePath(root, candidate))) ?? null;
+  return projects.filter((project) => project.rootPaths.some((root) => samePath(root, candidate)));
+}
+
+export function findProject(projects, idOrPath) {
+  return findProjects(projects, idOrPath)[0] ?? null;
 }
 
 export function projectForCwd(projects, cwd) {

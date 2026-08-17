@@ -2,6 +2,19 @@ import path from 'node:path';
 import { AppServerClient, runNewThread } from './app-server.mjs';
 import { findProject, projectForCwd, readProjectState, resolveProject } from './projects.mjs';
 
+export const ALL_THREAD_SOURCE_KINDS = [
+  'cli',
+  'vscode',
+  'exec',
+  'appServer',
+  'subAgent',
+  'subAgentReview',
+  'subAgentCompact',
+  'subAgentThreadSpawn',
+  'subAgentOther',
+  'unknown',
+];
+
 async function withServer(options, callback) {
   const client = new AppServerClient(options);
   try {
@@ -86,4 +99,75 @@ export async function newProjectThread({
 
 export async function archiveAppThread(threadId, options = {}) {
   return withServer(options, (client) => client.request('thread/archive', { threadId }));
+}
+
+async function listThreadPage(client, archived, cursor) {
+  return client.request('thread/list', {
+    archived,
+    cursor,
+    limit: 100,
+    sortKey: 'updated_at',
+    sourceKinds: ALL_THREAD_SOURCE_KINDS,
+  });
+}
+
+export async function listAllAppThreads(client, archived) {
+  const threads = [];
+  let cursor = null;
+
+  do {
+    const page = await listThreadPage(client, archived, cursor);
+    threads.push(...(Array.isArray(page?.data) ? page.data : []));
+    cursor = page?.nextCursor ?? null;
+  } while (cursor);
+
+  return threads;
+}
+
+export function selectProjectThreads(threads, projects, state, selectedProjects) {
+  const selectedIds = new Set(selectedProjects.map((project) => project.id));
+
+  return threads.filter((thread) => {
+    const assignedId = state.assignments[thread.id]?.projectId;
+    if (assignedId) return selectedIds.has(assignedId);
+    return selectedIds.has(projectForCwd(projects, thread.cwd)?.id);
+  });
+}
+
+function rootThreads(threads) {
+  const selectedIds = new Set(threads.map((thread) => thread.id));
+  return threads.filter(
+    (thread) => !thread.parentThreadId || !selectedIds.has(thread.parentThreadId),
+  );
+}
+
+export async function archiveProjectThreads(projects, selectedProjects, options = {}) {
+  const state = options.state ?? (await readProjectState(options));
+
+  const archive = async (client) => {
+    const active = await listAllAppThreads(client, false);
+    const selected = selectProjectThreads(
+      active,
+      projects,
+      state,
+      selectedProjects,
+    );
+    const roots = rootThreads(selected);
+
+    if (!options.dryRun) {
+      for (const thread of roots) {
+        await client.request('thread/archive', { threadId: thread.id });
+      }
+    }
+
+    return {
+      threadCount: selected.length,
+      archiveRootCount: roots.length,
+      threadIds: selected.map((thread) => thread.id),
+      archiveRootIds: roots.map((thread) => thread.id),
+    };
+  };
+
+  if (options.client) return archive(options.client);
+  return withServer(options, archive);
 }

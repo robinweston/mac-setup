@@ -8,7 +8,18 @@ import {
   validateApprovalPolicy,
   workspaceWriteSandboxPolicy,
 } from '../lib/app-server.mjs';
-import { addProject, findProject, parseProjectState, projectForCwd } from '../lib/projects.mjs';
+import {
+  addProject,
+  findProject,
+  findProjects,
+  parseProjectState,
+  projectForCwd,
+} from '../lib/projects.mjs';
+import {
+  ALL_THREAD_SOURCE_KINDS,
+  archiveProjectThreads,
+  selectProjectThreads,
+} from '../lib/threads.mjs';
 
 function state(projects = {}, order = [], assignments = {}) {
   return {
@@ -62,6 +73,71 @@ test('resolves exact project roots and longest cwd containment', () => {
   assert.equal(findProject(projects, '/tmp/work/nested').id, 'child');
   assert.equal(projectForCwd(projects, '/tmp/work/nested/src').id, 'child');
   assert.equal(projectForCwd(projects, '/tmp/work-other'), null);
+});
+
+test('finds every duplicate Desktop project for an exact root', () => {
+  const projects = [
+    { id: 'one', name: 'One', rootPaths: ['/tmp/work'] },
+    { id: 'two', name: 'Two', rootPaths: ['/tmp/work'] },
+    { id: 'other', name: 'Other', rootPaths: ['/tmp/other'] },
+  ];
+  assert.deepEqual(findProjects(projects, '/tmp/work').map(({ id }) => id), ['one', 'two']);
+});
+
+test('selects project threads by assignment or most-specific cwd', () => {
+  const projects = [
+    { id: 'parent', name: 'Parent', rootPaths: ['/tmp/work'] },
+    { id: 'child', name: 'Child', rootPaths: ['/tmp/work/nested'] },
+  ];
+  const threads = [
+    { id: 'parent-cwd', cwd: '/tmp/work/src' },
+    { id: 'child-cwd', cwd: '/tmp/work/nested/src' },
+    { id: 'assigned', cwd: '/tmp/other' },
+    { id: 'assigned-away', cwd: '/tmp/work' },
+  ];
+  const selected = selectProjectThreads(threads, projects, {
+    assignments: {
+      assigned: { projectKind: 'local', projectId: 'parent' },
+      'assigned-away': { projectKind: 'local', projectId: 'child' },
+    },
+  }, [projects[0]]);
+  assert.deepEqual(selected.map(({ id }) => id), ['parent-cwd', 'assigned']);
+  assert.ok(ALL_THREAD_SOURCE_KINDS.includes('subAgent'));
+  assert.ok(ALL_THREAD_SOURCE_KINDS.includes('vscode'));
+});
+
+test('archives only root threads and lets app-server cascade to descendants', async () => {
+  const projects = [{ id: 'project', name: 'Project', rootPaths: ['/tmp/work'] }];
+  const archived = [];
+  const client = {
+    async request(method, params) {
+      if (method === 'thread/list') {
+        assert.equal(params.archived, false);
+        assert.deepEqual(params.sourceKinds, ALL_THREAD_SOURCE_KINDS);
+        return {
+          data: [
+            { id: 'root', cwd: '/tmp/work' },
+            { id: 'child', cwd: '/tmp/work', parentThreadId: 'root' },
+          ],
+          nextCursor: null,
+        };
+      }
+      if (method === 'thread/archive') {
+        archived.push(params.threadId);
+        return {};
+      }
+      throw new Error(`Unexpected request: ${method}`);
+    },
+  };
+
+  const result = await archiveProjectThreads(projects, projects, {
+    client,
+    state: { assignments: {} },
+  });
+
+  assert.deepEqual(archived, ['root']);
+  assert.equal(result.threadCount, 2);
+  assert.equal(result.archiveRootCount, 1);
 });
 
 test('delegates registration and polls until Desktop state contains the project', async (t) => {

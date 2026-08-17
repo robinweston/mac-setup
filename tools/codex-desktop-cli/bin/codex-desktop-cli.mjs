@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 import process from 'node:process';
 import { DEFAULT_APPROVAL_POLICY } from '../lib/app-server.mjs';
-import { addProject, readProjectState } from '../lib/projects.mjs';
-import { listAppThreads, newProjectThread } from '../lib/threads.mjs';
+import {
+  addProject,
+  findProjects,
+  readProjectState,
+} from '../lib/projects.mjs';
+import { archiveProjectThreads, listAppThreads, newProjectThread } from '../lib/threads.mjs';
 
 const HELP = `codex-desktop-cli — Codex Desktop project/thread CLI
 
 Usage:
   codex-desktop-cli projects list [--json]
   codex-desktop-cli projects add PATH [--create] [--timeout MS] [--json]
+  codex-desktop-cli projects archive-threads ID|PATH [--dry-run] [--json]
   codex-desktop-cli threads list [--project ID|PATH] [--limit N] [--archived] [--json]
   codex-desktop-cli threads new --project ID|PATH --prompt TEXT [--create] [--approval-policy POLICY] [--sandbox MODE] [--add-dir PATH] [--network-access] [--timeout MS] [--json]
 
@@ -17,15 +22,22 @@ Environment:
   CODEX_BIN          codex binary override (prefers ChatGPT.app's bundled binary)
   CODEX_DESKTOP_APP  ChatGPT.app path override (default: /Applications/ChatGPT.app)
 
-Project listing reads and validates Desktop's global state without modifying it.
-Project registration is delegated to ChatGPT.app via macOS open. Thread listing
-and creation use the supported codex app-server JSONL interface.
+Project registration is delegated to ChatGPT.app via macOS open. Thread operations
+use the supported codex app-server JSONL interface. Project metadata is never
+modified by this tool.
 `;
 
 function parseArgs(argv) {
   const [noun, verb, ...tokens] = argv;
   const options = { _: [] };
-  const boolean = new Set(['json', 'archived', 'create', 'help', 'network-access']);
+  const boolean = new Set([
+    'json',
+    'archived',
+    'create',
+    'dry-run',
+    'help',
+    'network-access',
+  ]);
   const repeatable = new Set(['add-dir']);
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i];
@@ -86,6 +98,29 @@ async function run(noun, verb, options) {
     if (!projectPath) throw new Error('projects add requires PATH');
     const result = await addProject(projectPath, { ...common, create: Boolean(options.create) });
     output({ ok: true, ...result });
+    return;
+  }
+
+  if (noun === 'projects' && verb === 'archive-threads') {
+    const projectInput = options.path ?? options._[0];
+    if (!projectInput) throw new Error('projects archive-threads requires ID or PATH');
+    const state = await readProjectState(common);
+    const projects = findProjects(state.projects, projectInput);
+    if (projects.length === 0) {
+      output({ ok: true, projects: [], threads: { threadCount: 0, archiveRootCount: 0 } });
+      return;
+    }
+    const threads = await archiveProjectThreads(state.projects, projects, {
+      ...common,
+      state,
+      dryRun: Boolean(options['dry-run']),
+    });
+    output({
+      ok: true,
+      dryRun: Boolean(options['dry-run']),
+      projects,
+      threads,
+    });
     return;
   }
 
