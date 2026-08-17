@@ -49,4 +49,4 @@
 	include = .env
 [gtr "hook"]
 	postCreate = ~/.zsh/gtr-post-create.sh
-	postCd = fnm use --install-if-missing --silent-if-unchanged
+	postCd = eval "\"$(fnm env --shell zsh)\"" && fnm use --install-if-missing --silent-if-unchanged
