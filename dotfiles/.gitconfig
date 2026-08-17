@@ -44,7 +44,7 @@
   gpgsign = true
 
 [gtr "editor"]
-	default = code
+	default = open -a /Applications/ChatGPT.app
 [gtr "copy"]
 	include = .env
 [gtr "hook"]

@@ -140,7 +140,7 @@ _gtr_open_remote_branch() {
     if _gtr_branch_has_worktree "$branch"; then
         echo "Using existing worktree for $branch"
         gtr cd "$branch" || return $?
-        code .
+        open -a /Applications/ChatGPT.app .
         return $?
     fi
 
