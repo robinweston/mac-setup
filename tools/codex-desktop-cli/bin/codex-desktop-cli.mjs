@@ -10,7 +10,7 @@ Usage:
   codex-desktop-cli projects list [--json]
   codex-desktop-cli projects add PATH [--create] [--timeout MS] [--json]
   codex-desktop-cli threads list [--project ID|PATH] [--limit N] [--archived] [--json]
-  codex-desktop-cli threads new --project ID|PATH --prompt TEXT [--create] [--sandbox MODE] [--add-dir PATH] [--network-access] [--timeout MS] [--json]
+  codex-desktop-cli threads new --project ID|PATH --prompt TEXT [--create] [--approval-policy POLICY] [--sandbox MODE] [--add-dir PATH] [--network-access] [--timeout MS] [--json]
 
 Environment:
   CODEX_HOME         Codex state home (default: ~/.codex)

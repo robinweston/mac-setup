@@ -57,9 +57,11 @@ codex-desktop-cli threads list --project /absolute/path/to/project
 
 All output is JSON. `CODEX_HOME`, `CODEX_BIN`, and `CODEX_DESKTOP_APP` can
 override the default state directory, Codex executable, and application path.
-New threads default to the app-server `unlessTrusted` approval policy, which
-asks the user to approve commands that are not already trusted. Pass
-`--approval-policy never` only when non-interactive execution is intentional.
+New threads default to the app-server `on-request` approval policy, which lets
+Codex request approval when needed. The `--approval-policy` flag accepts
+`untrusted`, `on-request`, or `never`; pass `never` only when non-interactive
+execution is intentional. The app-server's structured granular policy is not
+representable by this string-valued flag.
 Repeat `--add-dir` to grant additional writable roots. `--network-access` and
 `--add-dir` require the `workspace-write` sandbox.
 

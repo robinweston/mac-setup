@@ -3,7 +3,11 @@ import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { DEFAULT_APPROVAL_POLICY, workspaceWriteSandboxPolicy } from '../lib/app-server.mjs';
+import {
+  DEFAULT_APPROVAL_POLICY,
+  validateApprovalPolicy,
+  workspaceWriteSandboxPolicy,
+} from '../lib/app-server.mjs';
 import { addProject, findProject, parseProjectState, projectForCwd } from '../lib/projects.mjs';
 
 function state(projects = {}, order = [], assignments = {}) {
@@ -15,7 +19,15 @@ function state(projects = {}, order = [], assignments = {}) {
 }
 
 test('defaults new threads to interactive approval', () => {
-  assert.equal(DEFAULT_APPROVAL_POLICY, 'unlessTrusted');
+  assert.equal(DEFAULT_APPROVAL_POLICY, 'on-request');
+});
+
+test('accepts only app-server string approval policies', () => {
+  for (const policy of ['untrusted', 'on-request', 'never']) {
+    assert.equal(validateApprovalPolicy(policy), policy);
+  }
+  assert.throws(() => validateApprovalPolicy('unlessTrusted'), /Unsupported approval policy/);
+  assert.throws(() => validateApprovalPolicy('granular'), /Unsupported approval policy/);
 });
 
 test('builds workspace-write policy with network and additional roots', () => {

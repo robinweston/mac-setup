@@ -4,7 +4,17 @@ import path from 'node:path';
 import readline from 'node:readline';
 
 const DESKTOP_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex';
-export const DEFAULT_APPROVAL_POLICY = 'unlessTrusted';
+export const APPROVAL_POLICIES = ['untrusted', 'on-request', 'never'];
+export const DEFAULT_APPROVAL_POLICY = 'on-request';
+
+export function validateApprovalPolicy(value) {
+  if (!APPROVAL_POLICIES.includes(value)) {
+    throw new AppServerError(
+      `Unsupported approval policy: ${value}. Expected one of: ${APPROVAL_POLICIES.join(', ')}`,
+    );
+  }
+  return value;
+}
 
 export function resolveCodexBinary(env = process.env) {
   if (env.CODEX_BIN) return env.CODEX_BIN;
@@ -211,6 +221,7 @@ export async function runNewThread({
   model,
   effort,
 } = {}) {
+  approvalPolicy = validateApprovalPolicy(approvalPolicy);
   const client = new AppServerClient({ codexBin, cwd, timeoutMs });
   try {
     await client.connect();
