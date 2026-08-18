@@ -42,6 +42,10 @@ gtr-new() {
     }
     cd -- "$TEST_PR_WORKTREE"
 }
+
+gtr-prune() {
+    print -r -- "gtr-prune-called"
+}
 EOF
 
 cat > "$fake_codex" <<'EOF'
@@ -94,6 +98,17 @@ output="$(
 [[ "$output" == *'--add-dir'*$'\n'"$base_repository/.git"* ]] || fail "shared Git metadata access was not supplied"
 [[ "$output" == *'--add-dir'*$'\n'"$fake_home/.config/bkt"* ]] || fail "bkt config access was not supplied"
 
+for merged_event in my_pr_merged reviewed_pr_merged; do
+    merged_output="$(
+        PR_MONITOR_EVENT="$merged_event" \
+        HOME="$fake_home" \
+        "$hooks/run"
+    )"
+
+    [[ "$merged_output" == "gtr-prune-called" ]] || \
+        fail "$merged_event did not run gtr-prune"
+done
+
 noop_output="$(PR_MONITOR_EVENT=build_failed_on_my_pr "$hooks/run")"
 [[ "$noop_output" == 'No dotfiles hook configured for build_failed_on_my_pr' ]] || fail "unconfigured event was not ignored"
 
@@ -105,3 +120,4 @@ print -- "PASS: event-name dispatch"
 print -- "PASS: unconfigured event no-op"
 print -- "PASS: non-interactive gtr shell integration"
 print -- "PASS: gtr-new-to-Codex review handoff"
+print -- "PASS: merged PR worktree pruning"
