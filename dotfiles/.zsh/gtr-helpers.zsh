@@ -239,13 +239,22 @@ _gtr_create_local_branch() {
     _gtr_ensure_shell_integration || return $?
     _gtr_fetch_origin_for_branch_check || return $?
 
-    if git show-ref --verify --quiet "refs/heads/$branch" ||
-       git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-        echo "branch '$branch' already exists" >&2
-        return 1
-    fi
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+        if _gtr_branch_has_worktree "$branch"; then
+            echo "Using existing worktree for $branch"
+            gtr cd "$branch" || return $?
+            open -a /Applications/ChatGPT.app .
+            return $?
+        fi
 
-    gtr new --cd "$branch" "$@" --track none --no-fetch || return $?
+        echo "Creating worktree for existing branch $branch"
+        gtr new --cd "$branch" "$@" --track local --no-fetch || return $?
+    elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+        echo "Creating worktree for existing remote branch $branch"
+        gtr new --cd "$branch" "$@" --track remote --no-fetch || return $?
+    else
+        gtr new --cd "$branch" "$@" --track none --no-fetch || return $?
+    fi
 
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || return $?
     git gtr editor "$branch"
