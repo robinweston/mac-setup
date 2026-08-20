@@ -138,10 +138,6 @@ CASKS=(
 echo "Installing formulae..."
 brew install ${FORMULAE[@]}
 
-# Install the Codex Desktop project/thread CLI on Homebrew's PATH.
-echo "Installing codex-desktop-cli..."
-"$SETUP_DIR/tools/codex-desktop-cli/install.sh"
-
 # Install git-worktree-runner (git gtr)
 echo "Installing git-worktree-runner (git gtr)..."
 GTR_DIR="$HOME/git/personal/git-worktree-runner"

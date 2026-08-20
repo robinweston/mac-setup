@@ -126,6 +126,42 @@ _gtr_branch_has_worktree() {
     git worktree list --porcelain | grep -Fqx "branch refs/heads/$1"
 }
 
+_gtr_target_cache_file() {
+    local target="$1"
+    local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/targets"
+    local target_hash
+
+    target_hash="$(printf '%s' "$target" | shasum -a 256 | awk '{print $1}')" || return $?
+    printf '%s/%s\n' "$cache_root" "$target_hash"
+}
+
+_gtr_remember_target_worktree() {
+    local target="$1"
+    local cache_file worktree
+
+    cache_file="$(_gtr_target_cache_file "$target")" || return $?
+    worktree="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+    mkdir -p -- "${cache_file:h}" || return $?
+    printf '%s\n' "${worktree:A}" >| "$cache_file"
+}
+
+gtr-open-cached() {
+    local target="$1"
+    local cache_file worktree repository_root
+
+    cache_file="$(_gtr_target_cache_file "$target")" || return $?
+    [[ -r "$cache_file" ]] || return 1
+    IFS= read -r worktree < "$cache_file"
+    [[ -n "$worktree" && -d "$worktree" ]] || return 1
+
+    repository_root="$(git -C "$worktree" rev-parse --show-toplevel 2>/dev/null)" || return 1
+    [[ "${repository_root:A}" == "${worktree:A}" ]] || return 1
+
+    echo "Using cached worktree for $target"
+    cd -- "$repository_root" || return $?
+    open -a /Applications/ChatGPT.app .
+}
+
 _gtr_open_remote_branch() {
     local branch="$1"
     shift
@@ -228,6 +264,12 @@ function gtr-new {
 
     target="$1"
     if url_fields="$(_gtr_parse_bitbucket_url "$target")"; then
+        # A previous resolution records the exact worktree for this URL. Use it
+        # before querying Bitbucket, scanning repositories, or fetching Git.
+        if gtr-open-cached "$target"; then
+            return 0
+        fi
+
         IFS=$'\t' read -r kind workspace repo value <<< "$url_fields"
         repository_identity="$workspace/$repo"
         base_repository="$(_gtr_find_base_repository "$repository_root" "$repository_identity")" || return $?
@@ -241,6 +283,11 @@ function gtr-new {
         cd -- "$base_repository" || return $?
         _gtr_open_remote_branch "$branch" "${@:2}"
         gtr_status=$?
+
+        if (( gtr_status == 0 )) || [[ "$PWD" != "$base_repository" ]]; then
+            _gtr_remember_target_worktree "$target" ||
+                echo "warning: could not cache worktree for $target" >&2
+        fi
 
         if (( gtr_status != 0 )) && [[ "$PWD" == "$base_repository" ]]; then
             cd -- "$start_directory" || return $?
@@ -437,22 +484,6 @@ gtr-update() {
     return 0
 }
 
-_gtr_prune_archive_codex_threads() {
-    local project_path="$1" dry_run="${2:-0}"
-    local -a args=(projects archive-threads "$project_path")
-
-    if ! command -v codex-desktop-cli >/dev/null 2>&1; then
-        echo "Warning: codex-desktop-cli is unavailable; Codex task archival was skipped for $project_path" >&2
-        return 0
-    fi
-
-    [[ "$dry_run" -eq 1 ]] && args+=(--dry-run)
-    if ! codex-desktop-cli "${args[@]}"; then
-        echo "Warning: worktree removal succeeded, but Codex task archival failed for $project_path" >&2
-    fi
-    return 0
-}
-
 gtr-prune() {
     local dry_run=0 removed=0 is_first=1
     local wt_path branch wt_status upstream
@@ -523,12 +554,6 @@ gtr-prune() {
         for wt_path in "${stale_paths[@]}"; do
             printf '  %s (stale)\n' "${wt_path##*/}"
         done
-        echo ""
-        echo "Codex task archival plan:"
-        for wt_path in "${prune_paths[@]}" "${stale_paths[@]}"; do
-            _gtr_prune_archive_codex_threads "$wt_path" 1
-        done
-        echo ""
         echo "Run without --dry-run to remove"
         return 0
     fi
@@ -543,13 +568,11 @@ gtr-prune() {
             if [[ -d "$wt_path" ]]; then
                 if rm -rf "$wt_path"; then
                     ((removed += 1))
-                    _gtr_prune_archive_codex_threads "$wt_path"
                 else
                     echo "Failed to remove $wt_path" >&2
                 fi
             else
                 ((removed += 1))
-                _gtr_prune_archive_codex_threads "$wt_path"
             fi
         done
     fi
@@ -562,7 +585,6 @@ gtr-prune() {
         echo "==> Removing worktree: $branch"
         if git gtr rm "$branch" --delete-branch --force --yes; then
             ((removed += 1))
-            _gtr_prune_archive_codex_threads "$wt_path"
         else
             echo "Failed to remove worktree for $branch" >&2
         fi

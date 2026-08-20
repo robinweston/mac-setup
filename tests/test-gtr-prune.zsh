@@ -7,7 +7,6 @@ source "$repo_root/dotfiles/.zsh/gtr-helpers.zsh"
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/gtr-prune.XXXXXX")"
 trap 'rm -rf -- "$test_root"' EXIT
 git_log="$test_root/git.log"
-codex_log="$test_root/codex.log"
 worktree_path="$test_root/repository-feature"
 
 fail() {
@@ -33,22 +32,13 @@ git() {
     esac
 }
 
-codex-desktop-cli() {
-    print -r -- "$*" >> "$codex_log"
-}
-
 gtr-prune > "$test_root/output.log"
 [[ "$(<"$git_log")" == "gtr rm feature --delete-branch --force --yes" ]] || \
     fail "gtr-prune did not remove the expected worktree"
-[[ "$(<"$codex_log")" == "projects archive-threads $worktree_path" ]] || \
-    fail "gtr-prune did not archive the removed worktree's Codex tasks"
 
-: > "$codex_log"
 : > "$git_log"
 gtr-prune --dry-run > "$test_root/dry-run-output.log"
 [[ ! -s "$git_log" ]] || fail "dry-run removed a worktree"
-[[ "$(<"$codex_log")" == "projects archive-threads $worktree_path --dry-run" ]] || \
-    fail "dry-run did not preview Codex task archival"
 
-echo "PASS: gtr-prune archives Codex tasks without removing project metadata"
-echo "PASS: gtr-prune dry-run previews Codex task archival without removing the worktree"
+echo "PASS: gtr-prune removes worktrees without Codex CLI integration"
+echo "PASS: gtr-prune dry-run does not remove the worktree"

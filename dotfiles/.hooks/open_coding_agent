@@ -1,0 +1,8 @@
+#!/bin/zsh
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source "$HOME/.zsh/gtr-helpers.zsh"
+gtr-new "$PR_MONITOR_PR_URL"

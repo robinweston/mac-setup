@@ -17,7 +17,6 @@ base_repository="$test_root/base repository"
 worktree="$test_root/review worktree"
 fake_home="$test_root/home directory"
 shell_init="$fake_home/.zsh/gtr-helpers.zsh"
-fake_codex="$test_root/fake bin/codex-desktop-cli"
 gtr_cache="$test_root/cache/gtr/init-gtr.zsh"
 
 git init -q "$base_repository"
@@ -41,20 +40,14 @@ gtr-new() {
         return 1
     }
     cd -- "$TEST_PR_WORKTREE"
+    print -r -- "gtr-new-url=$1"
+    print -r -- "gtr-new-cwd=$PWD"
 }
 
 gtr-prune() {
     print -r -- "gtr-prune-called"
 }
 EOF
-
-mkdir -p "${fake_codex:h}"
-cat > "$fake_codex" <<'EOF'
-#!/bin/zsh
-print -r -- "codex-cwd=$PWD"
-print -rl -- "$@"
-EOF
-chmod +x "$fake_codex"
 
 mkdir -p "${gtr_cache:h}"
 cat > "$gtr_cache" <<'EOF'
@@ -75,38 +68,42 @@ REPO_GTR_HELPERS="$repo_root/dotfiles/.zsh/gtr-helpers.zsh" \
     (( ! $+functions[compdef] ))
 ' || fail "gtr shell integration was not loaded for a non-interactive caller"
 
-output="$(
-    PR_MONITOR_EVENT=review_assigned_to_me \
+cached_helper_output="$(
+    HOME="$fake_home" \
+    XDG_CACHE_HOME="${gtr_cache:h:h}" \
+    REPO_GTR_HELPERS="$repo_root/dotfiles/.zsh/gtr-helpers.zsh" \
+    TEST_PR_WORKTREE="$worktree" \
+    TEST_PR_URL=https://bitbucket.org/cetarktech/api/pull-requests/42 \
+    /bin/zsh -c '
+        source "$REPO_GTR_HELPERS"
+        open() { print -r -- "open-cwd=$PWD" }
+        cd -- "$TEST_PR_WORKTREE"
+        _gtr_remember_target_worktree "$TEST_PR_URL"
+        cd -- /
+        _gtr_find_base_repository() {
+            print -u2 -- "expensive repository lookup must not run"
+            return 99
+        }
+        gtr-new "$TEST_PR_URL"
+    '
+)"
+[[ "$cached_helper_output" == *"Using cached worktree for https://bitbucket.org/cetarktech/api/pull-requests/42"* ]] || fail "gtr-new did not find its cached target"
+[[ "$cached_helper_output" == *"open-cwd=$worktree"* ]] || fail "gtr-new opened the wrong cached worktree"
+[[ "$cached_helper_output" != *"expensive repository lookup must not run"* ]] || fail "gtr-new performed repository lookup for a cached target"
+
+coding_agent_output="$(
+    PR_MONITOR_EVENT=open_coding_agent \
     PR_MONITOR_REPOSITORY=api \
     PR_MONITOR_PR_ID=42 \
     PR_MONITOR_PR_URL=https://bitbucket.org/cetarktech/api/pull-requests/42 \
-    PR_REVIEW_CODEX_BIN="$fake_codex" \
     TEST_PR_WORKTREE="$worktree" \
     TEST_PR_URL=https://bitbucket.org/cetarktech/api/pull-requests/42 \
     HOME="$fake_home" \
     "$hooks/run"
 )"
 
-[[ "$output" == *"Starting Codex review in $worktree"* ]] || fail "Codex did not start in the PR worktree"
-[[ "$output" == *"codex-cwd=$worktree"* ]] || fail "Codex received the wrong working directory"
-[[ "$output" == *'threads'*$'\n''new'* ]] || fail "Codex Desktop CLI thread creation was not requested"
-[[ "$output" == *'--project'*$'\n'"$worktree"* ]] || fail "Codex Desktop CLI received the wrong project"
-[[ "$output" == *'--prompt'*$'\n''$review-pr Review the pull request at https://bitbucket.org/cetarktech/api/pull-requests/42'* ]] || fail "review-pr skill prompt was not supplied"
-[[ "$output" == *'--reasoning-effort'*$'\n''high'* ]] || fail "high reasoning effort was not supplied"
-[[ "$output" == *'--sandbox'*$'\n''workspace-write'* ]] || fail "workspace-write sandbox was not supplied"
-[[ "$output" == *'--approval-policy'*$'\n''never'* ]] || fail "non-interactive approval policy was not supplied"
-[[ "$output" == *'--network-access'* ]] || fail "network access was not supplied"
-git_common_directory="$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir)"
-git_directory="$(git -C "$worktree" rev-parse --path-format=absolute --git-dir)"
-[[ "$output" == *'--add-dir'*$'\n'"$git_common_directory"* ]] || fail "shared Git metadata access was not supplied"
-[[ "$output" == *'--add-dir'*$'\n'"$git_directory"* ]] || fail "worktree-specific Git metadata access was not supplied"
-[[ "$output" == *'--add-dir'*$'\n'"$fake_home/.config/bkt"* ]] || fail "bkt credential-lock access was not supplied"
-[[ "$output" == *'--add-dir'*$'\n'"$fake_home/Library/Application Support/bkt"* ]] || fail "bkt macOS state access was not supplied"
-add_dir_count=0
-for output_line in "${(@f)output}"; do
-    [[ "$output_line" == '--add-dir' ]] && (( add_dir_count += 1 ))
-done
-(( add_dir_count == 4 )) || fail "Codex received $add_dir_count writable roots instead of the four required roots"
+[[ "$coding_agent_output" == *'gtr-new-url=https://bitbucket.org/cetarktech/api/pull-requests/42'* ]] || fail "coding agent hook passed the wrong PR URL"
+[[ "$coding_agent_output" == *"gtr-new-cwd=$worktree"* ]] || fail "coding agent hook did not open the PR worktree"
 
 for merged_event in my_pr_merged reviewed_pr_merged; do
     merged_output="$(
@@ -129,6 +126,6 @@ fi
 print -- "PASS: event-name dispatch"
 print -- "PASS: unconfigured event no-op"
 print -- "PASS: non-interactive gtr shell integration"
-print -- "PASS: gtr-new-to-Codex review handoff"
-print -- "PASS: linked-worktree and bkt writable roots preserve spaces"
+print -- "PASS: gtr target worktree cache"
+print -- "PASS: open coding agent handoff through optimized gtr-new"
 print -- "PASS: merged PR worktree pruning"
