@@ -126,6 +126,20 @@ _gtr_branch_has_worktree() {
     git worktree list --porcelain | grep -Fqx "branch refs/heads/$1"
 }
 
+_gtr_worktree_is_registered() {
+    local expected_path="${1:A}" field output
+
+    output="$(git worktree list --porcelain -z 2>/dev/null)" || return 2
+
+    for field in "${(@0)output}"; do
+        if [[ "$field" == worktree\ * && "${${field#worktree }:A}" == "$expected_path" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 _gtr_target_cache_file() {
     local target="$1"
     local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/targets"
@@ -567,22 +581,40 @@ gtr-prune() {
         return 0
     fi
 
-    # Remove stale/missing worktrees by pruning metadata and deleting directories
+    # Missing registrations are often newer than Git's default expiry window.
+    # They have already been identified as stale above, so expire them now and
+    # confirm Git actually forgot each path before deleting or counting it.
     if [[ ${#stale_paths[@]} -gt 0 ]]; then
         echo "Pruning stale worktree metadata..."
-        git worktree prune
+        if ! git worktree prune --expire now; then
+            echo "Failed to prune stale worktree metadata" >&2
+        fi
 
+        local registration_status
         for wt_path in "${stale_paths[@]}"; do
-            echo "==> Removing stale directory: ${wt_path##*/}"
-            if [[ -d "$wt_path" ]]; then
-                if rm -rf "$wt_path"; then
-                    ((removed += 1))
-                else
-                    echo "Failed to remove $wt_path" >&2
-                fi
+            if _gtr_worktree_is_registered "$wt_path"; then
+                registration_status=0
             else
-                ((removed += 1))
+                registration_status=$?
             fi
+            if (( registration_status == 0 )); then
+                echo "Failed to remove stale worktree registration for $wt_path" >&2
+                continue
+            elif (( registration_status != 1 )); then
+                echo "Could not verify stale worktree registration removal for $wt_path" >&2
+                continue
+            fi
+
+            if [[ -d "$wt_path" ]]; then
+                echo "==> Removing stale directory: ${wt_path##*/}"
+                if ! rm -rf -- "$wt_path"; then
+                    echo "Failed to remove $wt_path" >&2
+                    continue
+                fi
+            fi
+
+            echo "==> Removed stale worktree: ${wt_path##*/}"
+            ((removed += 1))
         done
     fi
 
