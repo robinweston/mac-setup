@@ -47,5 +47,5 @@
 [gtr "copy"]
 	include = .env
 [gtr "hook"]
-	postCreate = ~/.zsh/gtr-post-create.sh
+	postCreate = ~/.local/libexec/gtr/post-create
 	postCd = eval "\"$(fnm env --shell zsh)\"" && fnm use --install-if-missing --silent-if-unchanged

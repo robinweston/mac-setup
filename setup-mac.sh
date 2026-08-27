@@ -58,6 +58,12 @@ echo "Copying dotfiles"
 # Use -u to only update if files are newer, making it more idempotent
 rsync -av --progress --exclude=.DS_Store "$SETUP_DIR/dotfiles/" ~/
 
+echo "Installing personal command-line tools"
+mkdir -p "$HOME/.local/bin" "$HOME/.local/libexec/gtr"
+install -m 755 "$SETUP_DIR/tools/gtr-new" "$HOME/.local/bin/gtr-new"
+install -m 755 "$SETUP_DIR/tools/gtr-post-create" "$HOME/.local/libexec/gtr/post-create"
+rm -f "$HOME/.zsh/gtr-post-create.sh"
+
 # VS Code uses Library/Application Support on macOS. Keep the source settings
 # with the other dotfiles and link VS Code's expected path to it.
 VSCODE_DOTFILE="$HOME/.config/Code/User/settings.json"

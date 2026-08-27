@@ -1,0 +1,315 @@
+#!/usr/bin/env zsh
+
+set -o pipefail
+
+_gtr_new_parse_bitbucket_url() {
+    local pr_pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/pull-requests/([[:digit:]]+)([/?#].*)?$'
+    local branch_pattern='^https?://bitbucket\.org/([^/]+)/([^/]+)/branch/([^?#]+)([?#].*)?$'
+
+    if [[ "$1" =~ $pr_pattern ]]; then
+        printf 'pull-request\t%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+    elif [[ "$1" =~ $branch_pattern ]]; then
+        printf 'branch\t%s\t%s\t%s\n' "${match[1]}" "${match[2]}" "${match[3]}"
+    else
+        return 1
+    fi
+}
+
+_gtr_new_repository_identity() {
+    local repository="${1:-.}"
+    local remote_url
+
+    remote_url="$(git -C "$repository" remote get-url origin 2>/dev/null)" || return 1
+    remote_url="${remote_url%.git}"
+    [[ "$remote_url" =~ '[/:]([^/]+)/([^/]+)$' ]] || return 1
+    printf '%s/%s\n' "${match[1]}" "${match[2]}"
+}
+
+_gtr_new_find_base_repository() {
+    local repository_root="$1" expected_identity="$2"
+    local git_directory candidate identity
+    local -a matches=()
+
+    [[ -d "$repository_root" ]] || {
+        print -u2 -- "repository root does not exist: $repository_root"
+        return 1
+    }
+
+    while IFS= read -r -d $'\0' git_directory; do
+        candidate="${git_directory:h}"
+        identity="$(_gtr_new_repository_identity "$candidate" 2>/dev/null || true)"
+        [[ "$identity" == "$expected_identity" ]] && matches+=("$candidate")
+    done < <(find "$repository_root" -maxdepth 5 -type d -name .git -print0 2>/dev/null)
+
+    if (( ${#matches} == 0 )); then
+        print -u2 -- "no base checkout under $repository_root has origin repository '$expected_identity'"
+        return 1
+    fi
+    if (( ${#matches} > 1 )); then
+        print -u2 -- "multiple base checkouts under $repository_root have origin repository '$expected_identity':"
+        printf '  %s\n' "${matches[@]}" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${matches[1]}"
+}
+
+_gtr_new_branch_from_bitbucket_pr() {
+    local workspace="$1" repo="$2" pr_number="$3"
+    local pr_json branch
+
+    command -v bkt >/dev/null 2>&1 || {
+        print -u2 -- "bkt is not installed"
+        return 1
+    }
+
+    if ! pr_json="$(bkt pr view "$pr_number" --workspace "$workspace" --repo "$repo" --json 2>&1)" ||
+       [[ -z "$pr_json" ]]; then
+        print -u2 -- "bkt pr view failed:"
+        print -u2 -- "$pr_json"
+        return 1
+    fi
+
+    branch="$(printf '%s\n' "$pr_json" | jq -r '
+        .pull_request.source.branch.name //
+        .pull_request.fromRef.displayId //
+        .pull_request.source.branchName //
+        .source.branch.name //
+        .fromRef.displayId //
+        empty
+    ')"
+
+    if [[ -z "$branch" || "$branch" == null ]]; then
+        print -u2 -- "could not resolve source branch for PR $pr_number"
+        return 1
+    fi
+
+    printf '%s\n' "${branch#refs/heads/}"
+}
+
+_gtr_new_fetch_origin_for_branch_check() {
+    if ! git fetch origin --prune; then
+        print -u2 -- "could not fetch origin; branch existence cannot be verified"
+        return 1
+    fi
+}
+
+_gtr_new_target_cache_file() {
+    local target="$1"
+    local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/targets"
+    local target_hash
+
+    target_hash="$(printf '%s' "$target" | shasum -a 256 | awk '{print $1}')" || return $?
+    printf '%s/%s\n' "$cache_root" "$target_hash"
+}
+
+_gtr_new_cached_worktree() {
+    local target="$1"
+    local cache_file worktree repository_root
+
+    cache_file="$(_gtr_new_target_cache_file "$target")" || return $?
+    [[ -r "$cache_file" ]] || return 1
+    IFS= read -r worktree < "$cache_file"
+    [[ -n "$worktree" && -d "$worktree" ]] || return 1
+
+    repository_root="$(git -C "$worktree" rev-parse --show-toplevel 2>/dev/null)" || return 1
+    [[ "${repository_root:A}" == "${worktree:A}" ]] || return 1
+    printf '%s\n' "$repository_root"
+}
+
+_gtr_new_remember_target_worktree() {
+    local target="$1" worktree="$2"
+    local cache_file
+
+    cache_file="$(_gtr_new_target_cache_file "$target")" || return $?
+    mkdir -p -- "${cache_file:h}" || return $?
+    printf '%s\n' "${worktree:A}" >| "$cache_file"
+}
+
+_gtr_new_existing_worktree_for_branch() {
+    local wanted_branch="$1"
+    local line worktree=""
+
+    while IFS= read -r line; do
+        case "$line" in
+            worktree\ *) worktree="${line#worktree }" ;;
+            "branch refs/heads/$wanted_branch")
+                [[ -n "$worktree" ]] || return 1
+                printf '%s\n' "$worktree"
+                return 0
+                ;;
+            '') worktree="" ;;
+        esac
+    done < <(git worktree list --porcelain)
+
+    return 1
+}
+
+_gtr_new_jira_issue_key_from_url() {
+    local pattern='^https?://[^/]+/browse/([[:alpha:]][[:alnum:]_]*-[[:digit:]]+)([/?#].*)?$'
+
+    [[ "$1" =~ $pattern ]] || return 1
+    printf '%s\n' "${match[1]:u}"
+}
+
+_gtr_new_branch_from_jira_issue() {
+    local issue_key="$1"
+    local jira_json summary slug
+
+    command -v acli >/dev/null 2>&1 || {
+        print -u2 -- "Cannot create a branch for Jira issue $issue_key: Atlassian CLI (acli) is not installed."
+        return 1
+    }
+    command -v jq >/dev/null 2>&1 || {
+        print -u2 -- "jq is not installed"
+        return 1
+    }
+
+    if ! jira_json="$(acli jira workitem view "$issue_key" --fields summary --json 2>&1)"; then
+        print -u2 -- "could not load Jira issue $issue_key:"
+        print -u2 -- "$jira_json"
+        print -u2 -- "If needed, authenticate with: acli jira auth login --web"
+        return 1
+    fi
+
+    summary="$(printf '%s\n' "$jira_json" | jq -r '.fields.summary // empty' 2>/dev/null)"
+    [[ -n "$summary" ]] || {
+        print -u2 -- "Jira issue $issue_key did not return a summary"
+        return 1
+    }
+
+    slug="$(printf '%s\n' "$summary" |
+        tr '[:upper:]' '[:lower:]' |
+        sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+
+    if [[ -n "$slug" ]]; then
+        printf '%s-%s\n' "${issue_key:l}" "$slug"
+    else
+        printf '%s\n' "${issue_key:l}"
+    fi
+}
+
+_gtr_new_create_or_reuse() {
+    local branch="$1"
+    shift
+    local worktree output hook_status track_mode
+
+    _gtr_new_fetch_origin_for_branch_check || return $?
+
+    if worktree="$(_gtr_new_existing_worktree_for_branch "$branch")"; then
+        printf '%s\t%s\t%s\n' "$worktree" "$branch" existing
+        return 0
+    fi
+
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+        track_mode=local
+    elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+        track_mode=remote
+    else
+        track_mode=none
+    fi
+
+    output="$(git gtr new "$branch" "$@" --track "$track_mode" --no-fetch --porcelain)" || return $?
+    worktree="$(printf '%s\n' "$output" | awk -F '\t' '$1 == "path" { print $2 }')"
+    branch="$(printf '%s\n' "$output" | awk -F '\t' '$1 == "branch" { print $2 }')"
+    hook_status="$(printf '%s\n' "$output" | awk -F '\t' '$1 == "hook_status" { print $2 }')"
+    [[ -n "$worktree" && -n "$branch" && -n "$hook_status" ]] || {
+        print -u2 -- "git gtr returned incomplete porcelain output"
+        return 1
+    }
+
+    printf '%s\t%s\t%s\n' "$worktree" "$branch" "$hook_status"
+}
+
+_gtr_new_open_chatgpt() {
+    open -a /Applications/ChatGPT.app "$1"
+}
+
+_gtr_new_print_result() {
+    local porcelain="$1" worktree="$2" branch="$3" hook_status="$4"
+
+    if (( porcelain )); then
+        printf 'path\t%s\nbranch\t%s\nhook_status\t%s\n' "$worktree" "$branch" "$hook_status"
+    else
+        print -- "Worktree: $worktree"
+        print -- "Branch: $branch"
+    fi
+}
+
+gtr_new_main() {
+    local target="" kind workspace repo value url_fields repository_identity base_repository
+    local branch issue_key worktree result hook_status
+    local repository_root="${GTR_REPOSITORY_ROOT:-$HOME/git}"
+    local porcelain=0 should_open=1
+    local -a gtr_options=()
+
+    while (( $# > 0 )); do
+        case "$1" in
+            --porcelain) porcelain=1 ;;
+            --open) should_open=1 ;;
+            --no-open) should_open=0 ;;
+            *)
+                if [[ -z "$target" ]]; then
+                    target="$1"
+                else
+                    gtr_options+=("$1")
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [[ -z "$target" || "$target" == -* ]]; then
+        print -u2 -- "usage: gtr-new <branch-or-bitbucket-or-jira-url> [--open|--no-open] [--porcelain] [gtr-options]"
+        return 1
+    fi
+
+    if url_fields="$(_gtr_new_parse_bitbucket_url "$target")"; then
+        if worktree="$(_gtr_new_cached_worktree "$target")"; then
+            branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || print -- detached)"
+            hook_status=cached
+        else
+            IFS=$'\t' read -r kind workspace repo value <<< "$url_fields"
+            repository_identity="$workspace/$repo"
+            base_repository="$(_gtr_new_find_base_repository "$repository_root" "$repository_identity")" || return $?
+
+            if [[ "$kind" == pull-request ]]; then
+                branch="$(_gtr_new_branch_from_bitbucket_pr "$workspace" "$repo" "$value")" || return $?
+            else
+                branch="${value#refs/heads/}"
+            fi
+
+            result="$(cd -- "$base_repository" && _gtr_new_create_or_reuse "$branch" "${gtr_options[@]}")" || return $?
+            IFS=$'\t' read -r worktree branch hook_status <<< "$result"
+            _gtr_new_remember_target_worktree "$target" "$worktree" ||
+                print -u2 -- "warning: could not cache worktree for $target"
+        fi
+    else
+        branch="$target"
+        if issue_key="$(_gtr_new_jira_issue_key_from_url "$target")"; then
+            git rev-parse --show-toplevel >/dev/null 2>&1 || {
+                print -u2 -- "a Jira URL requires running gtr-new inside a Git worktree"
+                return 1
+            }
+            branch="$(_gtr_new_branch_from_jira_issue "$issue_key")" || return $?
+            (( porcelain )) || print -- "Using branch name: $branch"
+        fi
+
+        result="$(_gtr_new_create_or_reuse "$branch" "${gtr_options[@]}")" || return $?
+        IFS=$'\t' read -r worktree branch hook_status <<< "$result"
+    fi
+
+    [[ -n "$worktree" ]] || {
+        print -u2 -- "gtr-new could not determine the worktree path"
+        return 1
+    }
+
+    if (( should_open )); then
+        _gtr_new_open_chatgpt "$worktree" || return $?
+    fi
+    _gtr_new_print_result "$porcelain" "$worktree" "$branch" "$hook_status"
+}
+
+if [[ -z "${GTR_NEW_SOURCE_ONLY:-}" ]]; then
+    gtr_new_main "$@"
+fi
