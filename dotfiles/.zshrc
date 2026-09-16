@@ -19,8 +19,9 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-# Load fnm (Node version manager)
-eval "$(fnm env --use-on-cd)"
+# Load fnm (Node version manager). Use the absolute Homebrew path because Codex
+# starts a non-login zsh and may not have loaded .zprofile yet.
+eval "$(/opt/homebrew/bin/fnm env --use-on-cd)"
 
 _gtr_init="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/init-gtr.zsh"
 [[ -f "$_gtr_init" ]] || eval "$(git gtr init zsh)" || true
