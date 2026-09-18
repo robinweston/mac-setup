@@ -4,6 +4,12 @@
 [[ -f "$HOME/.zsh/gtr-helpers.zsh" ]] && source "$HOME/.zsh/gtr-helpers.zsh"
 [[ -f "$HOME/.zsh/gtr-interactive.zsh" ]] && source "$HOME/.zsh/gtr-interactive.zsh"
 
+# Homebrew command-line tools. Codex starts a non-login zsh, so .zprofile
+# may not have added Homebrew's bin directories to PATH yet.
+if [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; then
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+fi
+
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
