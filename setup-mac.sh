@@ -54,9 +54,14 @@ if [ ! -d "$ZSH_HIGHLIGHT_DIR" ]; then
     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_HIGHLIGHT_DIR"
 fi
 
-echo "Copying dotfiles"
-# Use -u to only update if files are newer, making it more idempotent
-rsync -av --progress --exclude=.DS_Store "$SETUP_DIR/dotfiles/" ~/
+echo "Linking dotfiles"
+DOTFILES_DIR="$SETUP_DIR/dotfiles"
+find "$DOTFILES_DIR" -type f ! -name .DS_Store -print0 | while IFS= read -r -d '' DOTFILE_SOURCE; do
+    RELATIVE_PATH="${DOTFILE_SOURCE#"$DOTFILES_DIR"/}"
+    TARGET="$HOME/$RELATIVE_PATH"
+    mkdir -p "${TARGET:h}"
+    ln -sfn "$DOTFILE_SOURCE" "$TARGET"
+done
 
 echo "Installing personal command-line tools"
 mkdir -p "$HOME/.local/bin" "$HOME/.local/libexec/gtr"
@@ -64,9 +69,9 @@ install -m 755 "$SETUP_DIR/tools/gtr-new" "$HOME/.local/bin/gtr-new"
 install -m 755 "$SETUP_DIR/tools/gtr-post-create" "$HOME/.local/libexec/gtr/post-create"
 rm -f "$HOME/.zsh/gtr-post-create.sh"
 
-# VS Code uses Library/Application Support on macOS. Keep the source settings
-# with the other dotfiles and link VS Code's expected path to it.
-VSCODE_DOTFILE="$HOME/.config/Code/User/settings.json"
+# VS Code uses Library/Application Support on macOS, so link its expected path
+# directly to the source settings file in the mac-setup repository.
+VSCODE_DOTFILE="$DOTFILES_DIR/.config/Code/User/settings.json"
 VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
 VSCODE_SETTINGS="$VSCODE_USER_DIR/settings.json"
 
@@ -75,7 +80,7 @@ mkdir -p "$VSCODE_USER_DIR"
 ln -sfn "$VSCODE_DOTFILE" "$VSCODE_SETTINGS"
 
 if [ "$DOTFILES_ONLY" = true ]; then
-    echo "Dotfiles copied - exiting because --dotfiles-only was specified"
+    echo "Dotfiles linked - exiting because --dotfiles-only was specified"
     exit 0
 fi
 
