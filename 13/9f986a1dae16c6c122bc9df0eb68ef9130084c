@@ -1,0 +1,19 @@
+setup-mac.sh
+  s_53b29cc9cb7df7::t_f021fb1f2feeb9 57-64,72-74,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "139f986a1dae16c6c122bc9df0eb68ef9130084c",
+  "prompts": {},
+  "sessions": {
+    "s_53b29cc9cb7df7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ccd0-dfa9-7151-a97c-82d1c87deffa",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    }
+  }
+}
