@@ -1,0 +1,41 @@
+dotfiles/.codex/hooks/worktree-setup
+  s_582d9abf9c83c8::t_25f85b98a29cac 2-15,18-23,27
+dotfiles/.hooks/.pr_merged
+  s_38a2ea61f0b7f9::t_27e14d4aae0f4c 7
+dotfiles/.hooks/README.md
+  s_38a2ea61f0b7f9::t_750893d2ee660f 15-17,23-24
+dotfiles/.zsh/gtr-helpers.zsh
+  s_38a2ea61f0b7f9::t_9e00495e048dff 71,82
+setup-mac.sh
+  s_582d9abf9c83c8::t_1a50ff8bfbe886 66-82,84,86
+tests/test-codex-worktree-setup.zsh
+  s_582d9abf9c83c8::t_6672926a0a05b3 1-2,4-5,8-44
+tests/test-gtr-update.zsh
+  s_38a2ea61f0b7f9::t_017666ef5771dc 62-73,85,105
+tests/test-pr-monitor-hooks.zsh
+  s_38a2ea61f0b7f9::t_88f0bc5f8c2ad3 25-29,31,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0dd81874333a3ec8e2cb4383e99f79bcd04dd131",
+  "prompts": {},
+  "sessions": {
+    "s_38a2ea61f0b7f9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f55e-d541-70c3-8b73-dfe7aed2dd13",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    },
+    "s_582d9abf9c83c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f56f-10d3-7913-ab6b-25a7a70121f5",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    }
+  }
+}
