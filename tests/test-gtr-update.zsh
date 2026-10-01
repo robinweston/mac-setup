@@ -59,13 +59,18 @@ git() {
     esac
 }
 
-gtr-prune() {
-    print -r -- "$PWD" >> "$prune_log"
-    print -r -- "prune:$PWD" >> "$action_log"
-    if [[ "$PWD" == "$repository_a" && -d "$repository_a_stale_worktree" ]]; then
-        git worktree remove --force "$repository_a_stale_worktree"
-    fi
-}
+fake_home="$test_root/home"
+pruner="$fake_home/.agents/skills/cleanup-worktrees/scripts/prune-missing-worktrees.py"
+mkdir -p "${pruner:h}"
+cat > "$pruner" <<'STUB'
+#!/bin/zsh
+print -r -- "$PWD" >> "$TEST_PRUNE_LOG"
+print -r -- "prune:$PWD" >> "$TEST_ACTION_LOG"
+git worktree remove "$TEST_STALE_WORKTREE"
+STUB
+chmod +x "$pruner"
+export TEST_PRUNE_LOG="$prune_log" TEST_ACTION_LOG="$action_log"
+export TEST_STALE_WORKTREE="$repository_a_stale_worktree"
 
 gtr() {
     [[ "$1 $2" == "cd main" ]] || fail "unexpected gtr arguments: $*"
@@ -77,7 +82,7 @@ starting_directory="$repository_a_worktree"
 output_file="$test_root/gtr-update-output.log"
 (
     cd "$starting_directory"
-    gtr-update
+    HOME="$fake_home" gtr-update
     [[ "$PWD" == "$repository_a" ]] || fail "gtr-update did not leave the shell in the base worktree"
 ) > "$output_file"
 output="$(<"$output_file")"
@@ -97,7 +102,7 @@ expected_remaining_actions="$(printf '%s\n' "pull:$repository_a_worktree" "pull:
 [[ "$(sed -n '1,2p' "$parallel_log")" != *"finish:"* ]] || \
     fail "gtr-update did not start remaining worktree pulls concurrently"
 [[ "$(<"$pull_log")" != *"$repository_a_stale_worktree"* ]] || \
-    fail "gtr-update pulled a worktree removed by gtr-prune"
+    fail "gtr-update pulled a worktree removed by the skill pruner"
 assert_contains "$output" "Updating $repository_a"
 assert_contains "$output" "Updated: 1"
 assert_contains "$output" "Already current: 2"

@@ -87,29 +87,6 @@ gtr-new feature/test >/dev/null
 [[ "$PWD" == "$worktree" ]] || fail "interactive gtr-new did not change directory"
 [[ "$(< "$TEST_GTR_ARGS")" == 'feature/test --porcelain' ]] || fail "interactive wrapper passed unexpected arguments"
 
-fake_bin="$test_root/fake-bin"
-package_directory="$test_root/package"
-mkdir -p "$fake_bin" "$package_directory"
-touch "$package_directory/package.json"
-{
-    print '#!/bin/sh'
-    print "printf ':\\n'"
-} > "$fake_bin/fnm"
-{
-    print '#!/bin/sh'
-    print -r -- 'printf "%s\n" "$*" > "$TEST_NPM_ARGS"'
-} > "$fake_bin/npm"
-chmod +x "$fake_bin/fnm" "$fake_bin/npm"
-
-TEST_NPM_ARGS="$test_root/npm-args"
-export TEST_NPM_ARGS
-(
-    cd -- "$package_directory"
-    PATH="$fake_bin:$PATH" /bin/sh "$repo_root/tools/gtr-post-create"
-)
-[[ "$(< "$TEST_NPM_ARGS")" == install ]] || fail "post-create hook did not run npm install"
-
 print -- "PASS: executable gtr-new reuses Jira worktrees and opens ChatGPT"
 print -- "PASS: executable gtr-new reuses cached URL targets"
 print -- "PASS: interactive gtr-new changes the current terminal directory"
-print -- "PASS: relocated post-create hook runs npm install"

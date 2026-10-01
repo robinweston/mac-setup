@@ -22,11 +22,13 @@ mkdir -p "$fake_home/.local/bin" "$fake_home/.zsh"
 } > "$fake_home/.local/bin/gtr-new"
 chmod +x "$fake_home/.local/bin/gtr-new"
 
-cat > "$fake_home/.zsh/gtr-helpers.zsh" <<'EOF'
-gtr-prune() {
-    print -r -- "gtr-prune-called"
-}
+pruner="$fake_home/.agents/skills/cleanup-worktrees/scripts/prune-missing-worktrees.py"
+mkdir -p "${pruner:h}"
+cat > "$pruner" <<'EOF'
+#!/bin/zsh
+print -r -- "skill-pruner-called"
 EOF
+chmod +x "$pruner"
 
 coding_agent_output="$(
     PR_MONITOR_EVENT=open_coding_agent \
@@ -48,8 +50,8 @@ for merged_event in my_pr_merged reviewed_pr_merged; do
         "$hooks/run"
     )"
 
-    [[ "$merged_output" == "gtr-prune-called" ]] ||
-        fail "$merged_event did not run gtr-prune"
+    [[ "$merged_output" == "skill-pruner-called" ]] ||
+        fail "$merged_event did not run the skill pruner"
 done
 
 noop_output="$(PR_MONITOR_EVENT=build_failed_on_my_pr "$hooks/run")"

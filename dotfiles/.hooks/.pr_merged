@@ -4,5 +4,4 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source "$HOME/.zsh/gtr-helpers.zsh"
-gtr-prune
+"$HOME/.agents/skills/cleanup-worktrees/scripts/prune-missing-worktrees.py" --repo "$PWD"

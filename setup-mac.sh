@@ -63,11 +63,27 @@ find "$DOTFILES_DIR" -type f ! -name .DS_Store -print0 | while IFS= read -r -d '
     ln -sfn "$DOTFILE_SOURCE" "$TARGET"
 done
 
+# Register the shared setup hook for new Codex-managed worktrees.
+CODEX_CONFIG="$HOME/.codex/config.toml"
+mkdir -p "${CODEX_CONFIG:h}"
+touch "$CODEX_CONFIG"
+if ! grep -Fq 'command = "/bin/sh ~/.codex/hooks/worktree-setup"' "$CODEX_CONFIG"; then
+    cat >> "$CODEX_CONFIG" <<'EOF'
+
+[[hooks.SessionStart]]
+matcher = "^startup$"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "/bin/sh ~/.codex/hooks/worktree-setup"
+statusMessage = "Setting up Codex worktree"
+EOF
+fi
+
 echo "Installing personal command-line tools"
-mkdir -p "$HOME/.local/bin" "$HOME/.local/libexec/gtr"
+mkdir -p "$HOME/.local/bin"
 install -m 755 "$SETUP_DIR/tools/gtr-new" "$HOME/.local/bin/gtr-new"
-install -m 755 "$SETUP_DIR/tools/gtr-post-create" "$HOME/.local/libexec/gtr/post-create"
-rm -f "$HOME/.zsh/gtr-post-create.sh"
+rm -f "$HOME/.local/libexec/gtr/post-create" "$HOME/.zsh/gtr-post-create.sh"
 
 # VS Code uses Library/Application Support on macOS, so link its expected path
 # directly to the source settings file in the mac-setup repository.

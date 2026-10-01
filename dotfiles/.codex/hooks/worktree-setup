@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+# A global SessionStart hook: set up only local Codex-managed worktrees.
+codex_home=${CODEX_HOME:-"$HOME/.codex"}
+worktrees_root=$(cd "$codex_home/worktrees" 2>/dev/null && pwd -P) || exit 0
+project_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+project_root=$(cd "$project_root" && pwd -P)
+
+case "$project_root" in
+    "$worktrees_root"/*) ;;
+    *) exit 0 ;;
+esac
+
+cd "$project_root"
+
+if [ -f .nvmrc ] || [ -f .node-version ] || [ -f package.json ]; then
+    fnm_bin=$(command -v fnm || true)
+    if [ -z "$fnm_bin" ] && [ -x /opt/homebrew/bin/fnm ]; then
+        fnm_bin=/opt/homebrew/bin/fnm
+    fi
+    [ -n "$fnm_bin" ] || { echo "Codex worktree setup: fnm is missing" >&2; exit 1; }
+    eval "$("$fnm_bin" env --shell bash)"
+fi
+
+if [ -f .nvmrc ] || [ -f .node-version ]; then
+    "$fnm_bin" use --install-if-missing --silent-if-unchanged
+fi
+
+if [ -f package.json ]; then
+    npm install
+fi
