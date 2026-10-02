@@ -2,18 +2,73 @@
   "mcpServers": {
     "fetch": {
       "command": "uvx",
-      "args": ["mcp-server-fetch"],
+      "args": [
+        "mcp-server-fetch"
+      ],
       "env": {},
-      "disabled": true,
-      "autoApprove": []
+      "autoApprove": [],
+      "disabled": true
     },
     "atlassian": {
       "url": "https://mcp.atlassian.com/v1/mcp/authv2",
+      "autoApprove": [
+        "getJiraIssue",
+        "getAccessibleAtlassianResources",
+        "getTransitionsForJiraIssue",
+        "transitionJiraIssue",
+        "searchJiraIssuesUsingJql",
+        "searchConfluenceUsingCql",
+        "getConfluenceSpaces",
+        "search",
+        "createConfluencePage",
+        "updateConfluencePage",
+        "getConfluencePage",
+        "getConfluencePageDescendants"
+      ],
+      "disabledTools": [
+        "addTeamworkGraphContext",
+        "createCompassComponent",
+        "createCompassComponentRelationship",
+        "createCompassCustomFieldDefinition",
+        "getCompassComponent",
+        "getCompassComponents",
+        "getCompassCustomFieldDefinitions"
+      ],
       "disabled": false
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"],
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "autoApprove": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "disabled": false
+    },
+    "figma-power": {
+      "url": "https://mcp.figma.com/mcp",
+      "autoApprove": [
+        "get_design_context",
+        "get_screenshot",
+        "get_variable_defs",
+        "get_metadata",
+        "get_code_connect_map",
+        "add_code_connect_map"
+      ],
+      "disabled": false
+    },
+    "google-workspace": {
+      "command": "/Users/robinweston/git/ai-skills/scripts/run-google-workspace-mcp.sh",
+      "disabled": false
+    },
+    "slackdump": {
+      "command": "slackdump",
+      "args": [
+        "mcp"
+      ],
       "disabled": false
     }
   }

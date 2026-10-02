@@ -7,14 +7,12 @@ export default {
     profile: "Profile 1",
   },
   handlers: [
-    // Add rules here to open specific URLs in the Personal profile
-    // Example:
-    // {
-    //   match: ["*.personal-domain.com/*"],
-    //   browser: {
-    //     name: "Brave Browser",
-    //     profile: "Profile 2",
-    //   },
-    // },
+    {
+      match: ({ url }) => url.hostname === "propertyguru.com.sg" || url.hostname.endsWith(".propertyguru.com.sg"),
+      browser: {
+        name: "Brave Browser",
+        profile: "Profile 2",
+      },
+    },
   ],
 };
