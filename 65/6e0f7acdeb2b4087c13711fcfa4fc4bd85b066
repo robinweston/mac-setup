@@ -1,0 +1,29 @@
+dotfiles/.finicky.js
+  s_34097f19d3b43b::t_f1fef31075dc04 10-16
+dotfiles/.kiro/settings/mcp.json
+  s_a905386457248a::t_27b1daa681b06b 5-7,9-10,14-36,41-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "656e0f7acdeb2b4087c13711fcfa4fc4bd85b066",
+  "prompts": {},
+  "sessions": {
+    "s_34097f19d3b43b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f1b0-4c44-7643-97dd-7055a8dd2edb",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    },
+    "s_a905386457248a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f2ca-f81d-7b13-977b-df6a8146e56c",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    }
+  }
+}
