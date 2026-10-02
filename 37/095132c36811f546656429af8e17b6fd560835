@@ -1,0 +1,27 @@
+dotfiles/.hooks/README.md
+  s_b6798411fd63b0::t_6edeb59288d920 19
+dotfiles/.hooks/open_coding_agent
+  s_b6798411fd63b0::t_fd9687961d24ac 6
+dotfiles/.hooks/open_coding_agent.py
+  s_b6798411fd63b0::t_0e756e6eda760d 1-151
+tests/test-pr-monitor-hooks.zsh
+  s_b6798411fd63b0::t_2249591cd762ea 21-23,39,44-45,68
+tests/test_open_coding_agent.py
+  s_b6798411fd63b0::t_20420d2ed033a9 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "37095132c36811f546656429af8e17b6fd560835",
+  "prompts": {},
+  "sessions": {
+    "s_b6798411fd63b0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fa81-ce6e-7ba3-8c37-fc4fa8d7dfcc",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <robin.weston@cettire.com>"
+    }
+  }
+}
