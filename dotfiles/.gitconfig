@@ -41,10 +41,3 @@
 
 [commit]
   gpgsign = true
-
-[gtr "editor"]
-	default = open -a /Applications/ChatGPT.app
-[gtr "copy"]
-	include = .env
-[gtr "hook"]
-	postCd = eval "\"$(fnm env --shell zsh)\"" && fnm use --install-if-missing --silent-if-unchanged

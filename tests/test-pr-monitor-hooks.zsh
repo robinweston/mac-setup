@@ -18,9 +18,9 @@ mkdir -p "$fake_home/.local/bin" "$fake_home/.zsh"
 
 {
     print '#!/bin/zsh'
-    print -r -- 'print -r -- "gtr-new-args=$*"'
-} > "$fake_home/.local/bin/gtr-new"
-chmod +x "$fake_home/.local/bin/gtr-new"
+    print -r -- 'print -r -- "python-args=$*"'
+} > "$fake_home/.local/bin/python3"
+chmod +x "$fake_home/.local/bin/python3"
 
 pruner="$fake_home/.agents/skills/cleanup-worktrees/scripts/prune-missing-worktrees.py"
 mkdir -p "${pruner:h}"
@@ -36,12 +36,13 @@ coding_agent_output="$(
     PR_MONITOR_PR_ID=42 \
     PR_MONITOR_PR_URL=https://bitbucket.org/cetarktech/api/pull-requests/42 \
     HOME="$fake_home" \
+    PATH="$fake_home/.local/bin:$PATH" \
     "$hooks/run"
 )"
 
 [[ "$coding_agent_output" == \
-    'gtr-new-args=https://bitbucket.org/cetarktech/api/pull-requests/42 --open' ]] ||
-    fail "coding agent hook did not invoke the installed gtr-new executable"
+    "python-args=$hooks/open_coding_agent.py" ]] ||
+    fail "coding agent hook did not invoke the Codex PR opener"
 
 for merged_event in my_pr_merged reviewed_pr_merged; do
     merged_output="$(
@@ -64,5 +65,5 @@ fi
 
 print -- "PASS: event-name dispatch"
 print -- "PASS: unconfigured event no-op"
-print -- "PASS: open coding agent handoff through installed gtr-new"
+print -- "PASS: open coding agent handoff through Codex PR opener"
 print -- "PASS: merged PR worktree pruning"

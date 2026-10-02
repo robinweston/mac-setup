@@ -16,9 +16,4 @@ Events without a matching executable are ignored. Hook scripts receive the origi
 `cleanup-worktrees` skill pruner. It removes only stale Git registrations whose
 worktree directories are already missing; the scheduled cleanup handles branches.
 
-`open_coding_agent` passes the pull-request URL to the installed
-`~/.local/bin/gtr-new` executable. `gtr-new` first checks the worktree cached
-when it previously resolved that URL, skipping Bitbucket lookup, repository
-scanning, and Git fetch when the worktree already exists. A missing or stale
-cache continues through the normal resolution and creation flow, then refreshes
-the cache and opens ChatGPT at the worktree.
+`open_coding_agent` runs the companion `open_coding_agent.py` script. It uses Git worktrees under a sibling `<repository>-worktrees` directory and opens the checkout with `codex app`. The script requires `bkt`, Git, Python 3, and Codex CLI. Set `PR_MONITOR_REPOSITORY_ROOT` if base checkouts are outside `~/git`.

@@ -80,11 +80,6 @@ statusMessage = "Setting up Codex worktree"
 EOF
 fi
 
-echo "Installing personal command-line tools"
-mkdir -p "$HOME/.local/bin"
-install -m 755 "$SETUP_DIR/tools/gtr-new" "$HOME/.local/bin/gtr-new"
-rm -f "$HOME/.local/libexec/gtr/post-create" "$HOME/.zsh/gtr-post-create.sh"
-
 # VS Code uses Library/Application Support on macOS, so link its expected path
 # directly to the source settings file in the mac-setup repository.
 VSCODE_DOTFILE="$DOTFILES_DIR/.config/Code/User/settings.json"
@@ -164,35 +159,6 @@ CASKS=(
 
 echo "Installing formulae..."
 brew install ${FORMULAE[@]}
-
-# Install git-worktree-runner (git gtr)
-echo "Installing git-worktree-runner (git gtr)..."
-GTR_DIR="$HOME/git/personal/git-worktree-runner"
-if command_exists git-gtr; then
-    echo "git-gtr already installed - skipping"
-else
-    echo "Cloning git-worktree-runner..."
-    if [ ! -d "$GTR_DIR" ]; then
-        mkdir -p "$HOME/git/personal"
-        git clone https://github.com/coderabbitai/git-worktree-runner.git "$GTR_DIR"
-    fi
-    echo "Installing git-gtr..."
-    ln -sf "$GTR_DIR/bin/git-gtr" "$(brew --prefix)/bin/git-gtr"
-    echo "git-gtr installed successfully"
-fi
-
-# Install git-gtr shell completion
-if [ -d "$GTR_DIR" ] && [ -f "$GTR_DIR/completions/_git-gtr" ]; then
-    echo "Installing git-gtr shell completion..."
-    mkdir -p .zsh/completions
-    cp "$GTR_DIR/completions/_git-gtr" .zsh/completions/
-    echo "git-gtr completion installed successfully"
-else
-    echo "Warning: git-gtr completion file not found at $GTR_DIR/completions/_git-gtr"
-fi
-
-# Note: .gtrconfig is automatically included via .gitconfig [include] section
-# No additional setup needed - the config file is loaded automatically
 
 reload_shell
 

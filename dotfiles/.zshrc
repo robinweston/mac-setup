@@ -1,8 +1,6 @@
 
 # Kiro CLI pre block. Keep at the top of this file.
 [[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh"
-[[ -f "$HOME/.zsh/gtr-helpers.zsh" ]] && source "$HOME/.zsh/gtr-helpers.zsh"
-[[ -f "$HOME/.zsh/gtr-interactive.zsh" ]] && source "$HOME/.zsh/gtr-interactive.zsh"
 
 # Homebrew command-line tools. Codex starts a non-login zsh, so .zprofile
 # may not have added Homebrew's bin directories to PATH yet.
@@ -28,11 +26,6 @@ source $ZSH/oh-my-zsh.sh
 # Load fnm (Node version manager). Use the absolute Homebrew path because Codex
 # starts a non-login zsh and may not have loaded .zprofile yet.
 eval "$(/opt/homebrew/bin/fnm env --use-on-cd)"
-
-_gtr_init="${XDG_CACHE_HOME:-$HOME/.cache}/gtr/init-gtr.zsh"
-[[ -f "$_gtr_init" ]] || eval "$(git gtr init zsh)" || true
-source "$_gtr_init" 2>/dev/null || true
-unset _gtr_init
 
 [[ "$TERM_PROGRAM" == "kiro" ]] && . "$(kiro --locate-shell-integration-path zsh)"
 

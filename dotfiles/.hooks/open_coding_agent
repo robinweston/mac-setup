@@ -1,7 +1,6 @@
 #!/bin/zsh
-
 set -o errexit
 set -o nounset
 set -o pipefail
 
-exec "$HOME/.local/bin/gtr-new" "$PR_MONITOR_PR_URL" --open
+exec python3 "${0:A:h}/open_coding_agent.py"
