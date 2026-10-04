@@ -1,0 +1,21 @@
+dotfiles/.gitconfig
+  s_a8c1439922992d::t_4933fab03b786c 42-44
+setup-mac.sh
+  s_a8c1439922992d::t_0d94fb07b38756 38-46,102-103,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6c9f119bc1528c47831d06fd07d6f8cd1cd1b5a7",
+  "prompts": {},
+  "sessions": {
+    "s_a8c1439922992d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a104c7-56e4-7792-84cc-cef1c00c8f2c",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
