@@ -35,6 +35,15 @@ function reload_shell() {
     source ~/.zprofile
 }
 
+# Keep Git from inventing a hostname-based identity if a command replaces the
+# global config. Set this in Homebrew Git's system config so it survives that
+# replacement, while preserving other system settings such as credential.helper.
+function configure_git_identity_guard() {
+    if [[ -x /opt/homebrew/bin/git ]]; then
+        /opt/homebrew/bin/git config --system user.useConfigOnly true
+    fi
+}
+
 # --- 1. Install Oh My Zsh ---
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
     echo "Installing Oh My Zsh..."
@@ -89,6 +98,8 @@ VSCODE_SETTINGS="$VSCODE_USER_DIR/settings.json"
 echo "Linking global VS Code settings"
 mkdir -p "$VSCODE_USER_DIR"
 ln -sfn "$VSCODE_DOTFILE" "$VSCODE_SETTINGS"
+
+configure_git_identity_guard
 
 if [ "$DOTFILES_ONLY" = true ]; then
     echo "Dotfiles linked - exiting because --dotfiles-only was specified"
@@ -159,6 +170,7 @@ CASKS=(
 
 echo "Installing formulae..."
 brew install ${FORMULAE[@]}
+configure_git_identity_guard
 
 reload_shell
 
