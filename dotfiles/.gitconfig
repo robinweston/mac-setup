@@ -42,3 +42,6 @@
 
 [includeIf "hasconfig:remote.*.url:personal_git:*/*"]
     path = ~/.gitconfig-personal
+[trace2]
+	eventTarget = af_unix:stream:/Users/robinweston/.git-ai/internal/daemon/trace2.sock
+	eventNesting = 0

@@ -5,5 +5,7 @@
     "git.autofetch": true,
     "chat.disableAIFeatures": true,
     "extensions.ignoreRecommendations": true,
-    "workbench.startupEditor": "none"
+    "workbench.startupEditor": "none",
+    "chat.useHooks": true,
+    "github.copilot.chat.otel.dbSpanExporter.enabled": true
 }
