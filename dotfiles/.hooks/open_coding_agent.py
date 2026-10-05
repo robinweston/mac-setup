@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Open a Bitbucket pull request in a sibling Git worktree and Codex."""
 
-import json
 import os
 from pathlib import Path
 import re
@@ -59,26 +58,16 @@ def ref_exists(repository, ref):
     ).returncode == 0
 
 
-def source_repository(pr):
-    repository = pr.get("source", {}).get("repository") or {}
-    if repository.get("full_name"):
-        return repository["full_name"]
-    workspace = repository.get("workspace") or {}
-    workspace = workspace.get("slug") if isinstance(workspace, dict) else workspace
-    return f"{workspace}/{repository['slug']}" if workspace and repository.get("slug") else None
-
-
-def source_clone_url(pr, origin, source_identity):
+def source_clone_url(origin, source_identity, ssh_url, https_url):
     if source_identity == repository_identity(origin):
         return "origin"
-    links = (pr.get("source", {}).get("repository") or {}).get("links") or {}
-    clones = links.get("clone") or []
     preferred = "ssh" if origin.startswith(("git@", "ssh://", "work_git:")) else "https"
-    for clone in clones:
-        if clone.get("name") == preferred and clone.get("href"):
-            return clone["href"]
     if preferred == "ssh":
+        if ssh_url:
+            return ssh_url
         return f"git@bitbucket.org:{source_identity}.git"
+    if https_url:
+        return https_url
     return f"https://bitbucket.org/{source_identity}.git"
 
 
@@ -93,16 +82,17 @@ def main():
     root = Path(os.environ.get("PR_MONITOR_REPOSITORY_ROOT", str(Path.home() / "git"))).resolve()
     repository = find_repository(root, identity)
 
-    payload = json.loads(run("bkt", "pr", "view", number, "--workspace", workspace, "--repo", slug, "--json"))
-    pr = payload.get("pull_request", payload)
-    source = pr.get("source") or {}
-    branch = (source.get("branch") or {}).get("name") or source.get("branchName") or (pr.get("fromRef") or {}).get("displayId")
+    branch = os.environ.get("PR_MONITOR_SOURCE_BRANCH", "").removeprefix("refs/heads/")
     if not branch:
-        raise RuntimeError(f"PR #{number} has no source branch in bkt output")
-    branch = branch.removeprefix("refs/heads/")
-    source_identity = source_repository(pr) or identity
+        raise RuntimeError("PR_MONITOR_SOURCE_BRANCH must be set from the PR metadata supplied by PR Monitor")
+    source_identity = os.environ.get("PR_MONITOR_SOURCE_REPOSITORY", identity)
     origin = run("git", "config", "--get", "remote.origin.url", cwd=repository)
-    remote = source_clone_url(pr, origin, source_identity)
+    remote = source_clone_url(
+        origin,
+        source_identity,
+        os.environ.get("PR_MONITOR_SOURCE_SSH_CLONE_URL"),
+        os.environ.get("PR_MONITOR_SOURCE_HTTPS_CLONE_URL"),
+    )
     remote_ref = f"refs/remotes/pr-monitor/{number}"
     run("git", "fetch", remote, f"+refs/heads/{branch}:{remote_ref}", cwd=repository)
 

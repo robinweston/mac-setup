@@ -42,12 +42,12 @@ class OpenCodingAgentTest(unittest.TestCase):
             run('git', 'config', f'url.{remote}.insteadOf', 'work_git:example/sample.git', cwd=repository)
             run('git', 'remote', 'set-url', 'origin', 'work_git:example/sample.git', cwd=repository)
 
-            (root / 'bin/bkt').write_text('#!/bin/sh\necho \'{"source":{"branch":{"name":"feature/test"}}}\'\n')
             (root / 'bin/codex').write_text('#!/bin/sh\necho "$2" >> "$OPENED_LOG"\n')
             for tool in (root / 'bin').iterdir():
                 tool.chmod(0o755)
             env = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}",
                        PR_MONITOR_PR_URL='https://bitbucket.org/example/sample/pull-requests/42',
+                       PR_MONITOR_SOURCE_BRANCH='feature/test',
                        PR_MONITOR_REPOSITORY_ROOT=str(root / 'repos'), OPENED_LOG=str(root / 'opened'))
             worktree = root / 'repos/sample-worktrees/feature-test'
             for _ in range(2):
