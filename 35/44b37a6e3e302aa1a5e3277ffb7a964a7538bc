@@ -1,0 +1,21 @@
+dotfiles/.config/Code/User/settings.json
+  s_a09a3fae12b9f3::t_e23bea8a646b09 8-10
+dotfiles/.gitconfig
+  s_a09a3fae12b9f3::t_be01de8273ff08 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3544b37a6e3e302aa1a5e3277ffb7a964a7538bc",
+  "prompts": {},
+  "sessions": {
+    "s_a09a3fae12b9f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a109b7-0a54-7551-84f8-49d7c1c6bd88",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
