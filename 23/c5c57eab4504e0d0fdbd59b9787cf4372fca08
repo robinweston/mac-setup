@@ -1,0 +1,26 @@
+dotfiles/.hooks/open_coding_agent.py
+  s_0ef40af38cbb86::t_bda63a091ffb84 61,66-67,69-70,87,90-95
+  s_0ef40af38cbb86::t_261d06355ad10d 85,88
+dotfiles/.kiro/settings/mcp.json
+  s_0ef40af38cbb86::t_261d06355ad10d 13
+dotfiles/.hooks/README.md
+  s_0ef40af38cbb86::t_bda63a091ffb84 19
+tests/test_open_coding_agent.py
+  s_0ef40af38cbb86::t_15868d70fda0e8 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "23c5c57eab4504e0d0fdbd59b9787cf4372fca08",
+  "prompts": {},
+  "sessions": {
+    "s_0ef40af38cbb86": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b65-3c1b-71f0-81f9-c5c60265d52b",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
