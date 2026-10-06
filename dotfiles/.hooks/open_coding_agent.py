@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Open a Bitbucket pull request in a sibling Git worktree and Codex."""
+"""Open a Bitbucket pull request in a persistent Git worktree and Codex."""
 
+import fcntl
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 from urllib.parse import unquote, urlparse
 
 
@@ -47,6 +49,8 @@ def worktrees(repository):
             current = {"path": Path(line[9:]).resolve()}
         elif current is not None and line.startswith("branch refs/heads/"):
             current["branch"] = line[len("branch refs/heads/"):]
+        elif current is not None and line.startswith("locked"):
+            current["locked"] = True
     if current is not None:
         yield current
 
@@ -71,6 +75,11 @@ def source_clone_url(origin, source_identity, ssh_url, https_url):
     return f"https://bitbucket.org/{source_identity}.git"
 
 
+def is_temporary(path):
+    return any(path.is_relative_to(root.resolve()) for root in
+               (Path('/tmp'), Path('/var/tmp'), Path(tempfile.gettempdir())))
+
+
 def main():
     url = os.environ.get("PR_MONITOR_PR_URL", "")
     parsed = urlparse(url)
@@ -78,10 +87,24 @@ def main():
     if parsed.scheme != "https" or parsed.hostname != "bitbucket.org" or not match:
         raise RuntimeError("PR_MONITOR_PR_URL must be a Bitbucket Cloud pull request URL")
     workspace, slug, number = (unquote(part) for part in match.groups())
+    if any(part in ('.', '..') or '/' in part or '\\' in part for part in (workspace, slug)):
+        raise RuntimeError("PR URL contains an invalid repository path")
     identity = f"{workspace}/{slug}"
     root = Path(os.environ.get("PR_MONITOR_REPOSITORY_ROOT", str(Path.home() / "git"))).resolve()
     repository = find_repository(root, identity)
 
+    # Rapid clicks must not fetch into the same ref or create the same worktree
+    # concurrently. Keep the lock file: unlinking it can split waiting callers
+    # across different inodes.
+    git_directory = Path(run("git", "rev-parse", "--git-common-dir", cwd=repository))
+    if not git_directory.is_absolute():
+        git_directory = repository / git_directory
+    with (git_directory / "pr-monitor-open.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        open_repository(repository, identity, number, root)
+
+
+def open_repository(repository, identity, number, root):
     branch = os.environ.get("PR_MONITOR_SOURCE_BRANCH", "").removeprefix("refs/heads/")
     if not branch:
         raise RuntimeError("PR_MONITOR_SOURCE_BRANCH must be set from the PR metadata supplied by PR Monitor")
@@ -97,17 +120,34 @@ def main():
     run("git", "fetch", remote, f"+refs/heads/{branch}:{remote_ref}", cwd=repository)
 
     local_branch = branch if source_identity == identity else f"pr/{number}/{branch}"
+    folder = re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip(".-")
+    if not folder:
+        raise RuntimeError("PR source branch cannot be used as a worktree folder")
+    if source_identity != identity:
+        folder = f"pr-{number}-{folder}"
+    destination = root / "worktrees" / identity / folder
+    for item in worktrees(repository):
+        if item.get("branch") == local_branch and not item["path"].is_dir():
+            if item.get("locked"):
+                raise RuntimeError(f"worktree is missing but locked; restore or unlock it: {item['path']}")
+            # Git otherwise keeps deleted worktrees registered for its grace
+            # period and reports the branch as already checked out there.
+            run("git", "worktree", "prune", "--expire", "now", cwd=repository)
+            break
     for item in worktrees(repository):
         if item.get("branch") == local_branch:
             worktree = item["path"]
+            if worktree != repository and worktree != destination and is_temporary(worktree):
+                if destination.exists():
+                    raise RuntimeError(f"worktree destination already exists: {destination}")
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                # Git updates its registration and preserves all local files.
+                # Do not force a move of a locked worktree.
+                run("git", "worktree", "move", str(worktree), str(destination), cwd=repository)
+                worktree = destination
             break
     else:
-        folder = re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip(".-")
-        if not folder:
-            raise RuntimeError("PR source branch cannot be used as a worktree folder")
-        if source_identity != identity:
-            folder = f"pr-{number}-{folder}"
-        worktree = repository.parent / f"{repository.name}-worktrees" / folder
+        worktree = destination
         if worktree.exists():
             raise RuntimeError(f"worktree destination already exists: {worktree}")
         worktree.parent.mkdir(parents=True, exist_ok=True)
@@ -135,7 +175,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, subprocess.CalledProcessError, KeyError, ValueError) as error:
+    except (RuntimeError, subprocess.CalledProcessError, KeyError, ValueError, OSError) as error:
         detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) and error.stderr else str(error)
         print(f"open coding agent: {detail}", file=sys.stderr)
         sys.exit(1)
