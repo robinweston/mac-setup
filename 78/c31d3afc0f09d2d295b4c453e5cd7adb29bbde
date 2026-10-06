@@ -1,0 +1,19 @@
+dotfiles/.finicky.js
+  s_c90dcfde1e05b5::t_1893d3e39d0272 7,11,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "78c31d3afc0f09d2d295b4c453e5cd7adb29bbde",
+  "prompts": {},
+  "sessions": {
+    "s_c90dcfde1e05b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10f7d-12b8-7cc0-a4c4-3075d31379fe",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
