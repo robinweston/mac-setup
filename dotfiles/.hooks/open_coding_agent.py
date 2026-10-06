@@ -2,6 +2,7 @@
 """Open a Bitbucket pull request in a persistent Git worktree and Codex."""
 
 import fcntl
+import json
 import os
 from pathlib import Path
 import re
@@ -108,6 +109,11 @@ def open_repository(repository, identity, number, root):
     branch = os.environ.get("PR_MONITOR_SOURCE_BRANCH", "").removeprefix("refs/heads/")
     if not branch:
         raise RuntimeError("PR_MONITOR_SOURCE_BRANCH must be set from the PR metadata supplied by PR Monitor")
+    event = json.loads(os.environ.get("PR_MONITOR_EVENT_JSON", "{}"))
+    title = event.get("pullRequestTitle", "")
+    folder = re.sub(r"[^A-Za-z0-9._-]+", "-", title).strip(".-").lower()[:200]
+    if not folder:
+        folder = f"pr-{number}"
     source_identity = os.environ.get("PR_MONITOR_SOURCE_REPOSITORY", identity)
     origin = run("git", "config", "--get", "remote.origin.url", cwd=repository)
     remote = source_clone_url(
@@ -120,12 +126,10 @@ def open_repository(repository, identity, number, root):
     run("git", "fetch", remote, f"+refs/heads/{branch}:{remote_ref}", cwd=repository)
 
     local_branch = branch if source_identity == identity else f"pr/{number}/{branch}"
-    folder = re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip(".-")
-    if not folder:
-        raise RuntimeError("PR source branch cannot be used as a worktree folder")
     if source_identity != identity:
         folder = f"pr-{number}-{folder}"
-    destination = root / "worktrees" / identity / folder
+    managed_directory = root / "worktrees" / identity
+    destination = managed_directory / folder
     for item in worktrees(repository):
         if item.get("branch") == local_branch and not item["path"].is_dir():
             if item.get("locked"):
@@ -137,7 +141,8 @@ def open_repository(repository, identity, number, root):
     for item in worktrees(repository):
         if item.get("branch") == local_branch:
             worktree = item["path"]
-            if worktree != repository and worktree != destination and is_temporary(worktree):
+            if (worktree != repository and worktree != destination
+                    and (is_temporary(worktree) or worktree.is_relative_to(managed_directory))):
                 if destination.exists():
                     raise RuntimeError(f"worktree destination already exists: {destination}")
                 destination.parent.mkdir(parents=True, exist_ok=True)

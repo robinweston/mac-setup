@@ -2,6 +2,7 @@
 """End-to-end local Git checks for the PR Monitor Codex opener."""
 
 import os
+import json
 import shutil
 from pathlib import Path
 import subprocess
@@ -51,8 +52,9 @@ class OpenCodingAgentTest(unittest.TestCase):
         env = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}",
                    PR_MONITOR_PR_URL='https://bitbucket.org/example/sample/pull-requests/42',
                    PR_MONITOR_SOURCE_BRANCH='feature/test',
+                   PR_MONITOR_EVENT_JSON=json.dumps({'pullRequestTitle': 'Improve coding agent hooks'}),
                    PR_MONITOR_REPOSITORY_ROOT=str(root / 'repos'), OPENED_LOG=str(root / 'opened'))
-        worktree = root / 'repos/worktrees/example/sample/feature-test'
+        worktree = root / 'repos/worktrees/example/sample/improve-coding-agent-hooks'
         self.root, self.remote, self.repository = root, remote, repository
         self.env, self.worktree = env, worktree
 
@@ -87,6 +89,26 @@ class OpenCodingAgentTest(unittest.TestCase):
         self.assertTrue(self.worktree.is_dir())
         self.assertNotIn(str(deleted), run('git', 'worktree', 'list', '--porcelain', cwd=self.repository))
         self.assertEqual((self.root / 'opened').read_text().splitlines(), [str(self.worktree)] * 2)
+
+    def test_title_change_moves_worktree_and_preserves_local_files(self):
+        run('python3', str(SCRIPT), env=self.env)
+        (self.worktree / 'readme').write_text('local edits\n')
+        (self.worktree / 'untracked').write_text('keep me\n')
+        env = dict(self.env, PR_MONITOR_EVENT_JSON=json.dumps({'pullRequestTitle': '../Fix: hooks / safely!'}))
+        run('python3', str(SCRIPT), env=env)
+        renamed = self.worktree.parent / 'fix-hooks-safely'
+        self.assertFalse(self.worktree.exists())
+        self.assertEqual((renamed / 'readme').read_text(), 'local edits\n')
+        self.assertEqual((renamed / 'untracked').read_text(), 'keep me\n')
+        self.assertEqual((self.root / 'opened').read_text().splitlines(), [str(self.worktree), str(renamed)])
+
+    def test_missing_or_unusable_title_uses_pr_number(self):
+        for title in ('', '../ !!!'):
+            with self.subTest(title=title):
+                env = dict(self.env, PR_MONITOR_EVENT_JSON=json.dumps({'pullRequestTitle': title}))
+                run('python3', str(SCRIPT), env=env)
+        self.assertEqual((self.root / 'opened').read_text().splitlines(),
+                         [str(self.worktree.parent / 'pr-42')] * 2)
 
     def test_move_temporary_worktree_preserves_local_files(self):
         old = self.root / 'temporary-checkout'
