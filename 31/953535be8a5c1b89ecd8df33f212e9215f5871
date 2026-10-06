@@ -1,0 +1,27 @@
+dotfiles/.hooks/README.md
+  s_aefe7ca0aa0f18::t_944b90a6afffaf 26,28
+  s_aefe7ca0aa0f18::t_ae84d539750351 19
+tests/test_open_coding_agent.py
+  s_aefe7ca0aa0f18::t_ae84d539750351 57,99
+  s_aefe7ca0aa0f18::t_944b90a6afffaf 5,55,93-98,100-111
+  s_aefe7ca0aa0f18::t_1e5de41ef21773 112
+dotfiles/.hooks/open_coding_agent.py
+  s_aefe7ca0aa0f18::t_944b90a6afffaf 5,112-113,115-116,131-132,144-145
+  s_aefe7ca0aa0f18::t_ae84d539750351 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "31953535be8a5c1b89ecd8df33f212e9215f5871",
+  "prompts": {},
+  "sessions": {
+    "s_aefe7ca0aa0f18": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11002-0c3b-7722-9ee0-c8c928801dba",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
