@@ -4,14 +4,14 @@
 export default {
   defaultBrowser: {
     name: "Brave Browser",
-    profile: "Profile 1",
+    profile: "Work",
   },
   handlers: [
     {
-      match: ({ url }) => url.hostname === "propertyguru.com.sg" || url.hostname.endsWith(".propertyguru.com.sg"),
+      match: (url) => url.hostname === "propertyguru.com.sg" || url.hostname.endsWith(".propertyguru.com.sg"),
       browser: {
         name: "Brave Browser",
-        profile: "Profile 2",
+        profile: "Personal",
       },
     },
   ],
