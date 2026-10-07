@@ -11,6 +11,8 @@ import sys
 import tempfile
 from urllib.parse import unquote, urlparse
 
+from codex_project_workspace import open_feature
+
 
 def run(*args, cwd=None):
     return subprocess.run(args, cwd=cwd, check=True, text=True, capture_output=True).stdout.strip()
@@ -130,6 +132,7 @@ def open_repository(repository, identity, number, root):
         folder = f"pr-{number}-{folder}"
     managed_directory = root / "worktrees" / identity
     destination = managed_directory / folder
+    previous_path = None
     for item in worktrees(repository):
         if item.get("branch") == local_branch and not item["path"].is_dir():
             if item.get("locked"):
@@ -148,6 +151,7 @@ def open_repository(repository, identity, number, root):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 # Git updates its registration and preserves all local files.
                 # Do not force a move of a locked worktree.
+                previous_path = worktree
                 run("git", "worktree", "move", str(worktree), str(destination), cwd=repository)
                 worktree = destination
             break
@@ -173,8 +177,10 @@ def open_repository(repository, identity, number, root):
     else:
         print(f"Warning: {worktree} has local changes; leaving it unchanged", file=sys.stderr)
 
-    print(f"Opening {worktree} ({local_branch}) in Codex")
-    run("codex", "app", str(worktree))
+    project_name = repository.relative_to(root).as_posix()
+    feature = title.strip() or folder
+    print(f"Opening {feature} in Codex project {project_name}: {worktree} ({local_branch})")
+    open_feature(repository, worktree, project_name, feature, previous_path)
 
 
 if __name__ == "__main__":

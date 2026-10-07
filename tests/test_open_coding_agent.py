@@ -46,7 +46,8 @@ class OpenCodingAgentTest(unittest.TestCase):
         run('git', 'config', f'url.{remote}.insteadOf', 'work_git:example/sample.git', cwd=repository)
         run('git', 'remote', 'set-url', 'origin', 'work_git:example/sample.git', cwd=repository)
 
-        (root / 'bin/codex').write_text('#!/bin/sh\necho "$2" >> "$OPENED_LOG"\n')
+        (root / 'bin/codex').write_text('#!/bin/sh\nexec python3 "' + str(Path(__file__).with_name('fake_codex.py')) + '"\n')
+        (root / 'bin/open').write_text('#!/usr/bin/env python3\nimport json,os,sys\nfrom pathlib import Path\np=Path(os.environ["OPENED_LOG"])\ns=json.loads(Path(str(p)+".json").read_text())\nt=next(t for t in s["threads"] if sys.argv[1].endswith(t["id"]))\nwith p.open("a") as f: f.write(t["cwd"]+"\\n")\n')
         for tool in (root / 'bin').iterdir():
             tool.chmod(0o755)
         env = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}",
@@ -62,6 +63,13 @@ class OpenCodingAgentTest(unittest.TestCase):
         root, remote, env, worktree = self.root, self.remote, self.env, self.worktree
         for _ in range(2):
             run('python3', str(SCRIPT), env=env)
+        state = json.loads((root / 'opened.json').read_text())
+        self.assertEqual(len(state['projects']), 1)
+        self.assertEqual(state['projects'][0]['roots'], [{'path': str(self.repository)}])
+        self.assertEqual(state['projects'][0]['name'], 'sample')
+        self.assertEqual(len(state['threads']), 1)
+        self.assertEqual(state['threads'][0]['name'], 'Improve coding agent hooks')
+        self.assertEqual(state['threads'][0]['projectId'], state['projects'][0]['id'])
         self.assertEqual(run('git', 'branch', '--show-current', cwd=worktree), 'feature/test')
         self.assertEqual((root / 'opened').read_text().splitlines(), [str(worktree)] * 2)
 
@@ -97,6 +105,10 @@ class OpenCodingAgentTest(unittest.TestCase):
         env = dict(self.env, PR_MONITOR_EVENT_JSON=json.dumps({'pullRequestTitle': '../Fix: hooks / safely!'}))
         run('python3', str(SCRIPT), env=env)
         renamed = self.worktree.parent / 'fix-hooks-safely'
+        state = json.loads((self.root / 'opened.json').read_text())
+        self.assertEqual(len(state['threads']), 1)
+        self.assertEqual(state['threads'][0]['name'], '../Fix: hooks / safely!')
+        self.assertEqual(state['threads'][0]['cwd'], str(renamed))
         self.assertFalse(self.worktree.exists())
         self.assertEqual((renamed / 'readme').read_text(), 'local edits\n')
         self.assertEqual((renamed / 'untracked').read_text(), 'keep me\n')
@@ -144,6 +156,20 @@ class OpenCodingAgentTest(unittest.TestCase):
         self.assertNotIn('Traceback', result.stderr)
         self.assertIn('locked', run('git', 'worktree', 'list', '--porcelain', cwd=self.repository))
         self.assertFalse((self.root / 'opened').exists())
+
+    def test_two_features_share_repository_project(self):
+        run('python3', str(SCRIPT), env=self.env)
+        run('git', 'branch', 'feature/second', 'feature/test', cwd=self.repository)
+        run('git', 'push', 'origin', 'feature/second', cwd=self.repository)
+        env = dict(self.env, PR_MONITOR_SOURCE_BRANCH='feature/second',
+                   PR_MONITOR_EVENT_JSON=json.dumps({'pullRequestTitle': 'Second feature'}))
+        run('python3', str(SCRIPT), env=env)
+        state = json.loads((self.root / 'opened.json').read_text())
+        self.assertEqual(len(state['projects']), 1)
+        self.assertEqual(len(state['threads']), 2)
+        self.assertEqual({t['projectId'] for t in state['threads']}, {state['projects'][0]['id']})
+        self.assertEqual({t['name'] for t in state['threads']},
+                         {'Improve coding agent hooks', 'Second feature'})
 
     def test_overlapping_clicks(self):
         # Hold the first fetch until all callers have started, so their Git
