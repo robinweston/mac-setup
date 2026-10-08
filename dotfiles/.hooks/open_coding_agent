@@ -14,17 +14,12 @@ if [[ ! "$pr_url" =~ '^https://bitbucket\.org/[^/?#]+/[^/?#]+/pull-requests/[0-9
     exit 1
 fi
 
-dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-PR Monitor Dispatcher}"
-skill_path="$HOME/.agents/skills/get-ready/SKILL.md"
-if [[ ! -r "$skill_path" ]]; then
-    print -u2 -- "open coding agent: get-ready skill is not readable: $skill_path"
-    exit 1
-fi
-
+# Agent-created Desktop chats can have an empty preview and be omitted from
+# the CLI name lookup. Use the verified dispatcher UUID to bypass that lookup.
+dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-01a11afd-3f31-7292-bcef-4443c2e6836b}"
 prompt='$get-ready '
 prompt+="$pr_url"
-prompt+=$'\n\n'
-prompt+="Use the skill at $skill_path to prepare this PR in Codex Desktop. Complete the skill's initial worktree/branch verification, then acknowledge and wait; do not start implementation. Follow the skill directly without looking up or storing PR-to-thread receipts."
+prompt+=$'\n\nWait for input.'
 
 codex queue --thread "$dispatcher" --message "$prompt"
 print -- "PR request queued to $dispatcher; queue acceptance is not worker setup completion."
