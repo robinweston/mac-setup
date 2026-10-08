@@ -3,4 +3,28 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-exec python3 "${0:A:h}/open_coding_agent.py"
+if ! command -v codex >/dev/null; then
+    print -u2 -- "open coding agent: missing dependency: codex"
+    exit 1
+fi
+
+pr_url="${PR_MONITOR_PR_URL:-}"
+if [[ ! "$pr_url" =~ '^https://bitbucket\.org/[^/?#]+/[^/?#]+/pull-requests/[0-9]+/?([?#].*)?$' ]]; then
+    print -u2 -- "open coding agent: PR_MONITOR_PR_URL must be a Bitbucket Cloud pull request URL"
+    exit 1
+fi
+
+dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-PR Monitor Dispatcher}"
+skill_path="$HOME/.agents/skills/get-ready/SKILL.md"
+if [[ ! -r "$skill_path" ]]; then
+    print -u2 -- "open coding agent: get-ready skill is not readable: $skill_path"
+    exit 1
+fi
+
+prompt='$get-ready '
+prompt+="$pr_url"
+prompt+=$'\n\n'
+prompt+="Use the skill at $skill_path to prepare this PR in Codex Desktop. Complete the skill's initial worktree/branch verification, then acknowledge and wait; do not start implementation. Follow the skill directly without looking up or storing PR-to-thread receipts."
+
+codex queue --thread "$dispatcher" --message "$prompt"
+print -- "PR request queued to $dispatcher; queue acceptance is not worker setup completion."
