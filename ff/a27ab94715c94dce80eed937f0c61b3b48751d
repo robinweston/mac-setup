@@ -1,0 +1,19 @@
+dotfiles/.ssh/config
+  s_8086f889457a64::t_58a97a79ef9259 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ffa27ab94715c94dce80eed937f0c61b3b48751d",
+  "prompts": {},
+  "sessions": {
+    "s_8086f889457a64": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1426d-cb8b-7d43-b8f1-03032f81bd62",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
