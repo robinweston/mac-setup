@@ -26,6 +26,7 @@ source $ZSH/oh-my-zsh.sh
 # Load fnm (Node version manager). Use the absolute Homebrew path because Codex
 # starts a non-login zsh and may not have loaded .zprofile yet.
 eval "$(/opt/homebrew/bin/fnm env --use-on-cd)"
+fnm use --silent-if-unchanged
 
 [[ "$TERM_PROGRAM" == "kiro" ]] && . "$(kiro --locate-shell-integration-path zsh)"
 
