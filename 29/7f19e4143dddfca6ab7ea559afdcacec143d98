@@ -1,0 +1,19 @@
+dotfiles/.zshrc
+  s_e58ea093f9a1b9::t_d02d25d4303380 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "297f19e4143dddfca6ab7ea559afdcacec143d98",
+  "prompts": {},
+  "sessions": {
+    "s_e58ea093f9a1b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18695-6857-7f73-b8ec-4e419b219605",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
