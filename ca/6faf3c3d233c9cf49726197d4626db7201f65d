@@ -1,0 +1,19 @@
+dotfiles/.zshenv
+  s_a8fdd22b3a8543::t_4f697053f05cca 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ca6faf3c3d233c9cf49726197d4626db7201f65d",
+  "prompts": {},
+  "sessions": {
+    "s_a8fdd22b3a8543": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1870a-f393-7ed3-a56e-88c0f933ffe2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
