@@ -3,8 +3,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-if ! command -v codex >/dev/null; then
-    print -u2 -- "open coding agent: missing dependency: codex"
+# Queue through the CLI shipped with Desktop. A standalone app-server takes
+# the thread's writer lock and lacks Desktop's project/chat tools.
+codex_bin="${PR_MONITOR_CODEX_BIN:-/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex}"
+open_bin="${PR_MONITOR_OPEN_BIN:-/usr/bin/open}"
+if [[ ! -x "$codex_bin" ]]; then
+    print -u2 -- "open coding agent: Desktop Codex CLI not found at $codex_bin (override with PR_MONITOR_CODEX_BIN)"
     exit 1
 fi
 
@@ -14,12 +18,17 @@ if [[ ! "$pr_url" =~ '^https://bitbucket\.org/[^/?#]+/[^/?#]+/pull-requests/[0-9
     exit 1
 fi
 
-# Agent-created Desktop chats can have an empty preview and be omitted from
-# the CLI name lookup. Use the verified dispatcher UUID to bypass that lookup.
 dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-01a11afd-3f31-7292-bcef-4443c2e6836b}"
 prompt='$get-ready '
 prompt+="$pr_url"
 prompt+=$'\n\nWait for input.'
 
-codex queue --thread "$dispatcher" --message "$prompt"
-print -- "PR request queued to $dispatcher; queue acceptance is not worker setup completion."
+# Do not use queue --resume: that can resume on a separate daemon. Desktop
+# must own and run this thread so get-ready has its native chat/worktree tools.
+"$codex_bin" queue --thread "$dispatcher" --message "$prompt"
+if ! "$open_bin" "codex://threads/$dispatcher"; then
+    # The request is already queued. Returning failure could cause a retry to
+    # enqueue the same request again.
+    print -u2 -- "PR request is queued, but Desktop could not be opened. Open the dispatcher manually: codex://threads/$dispatcher"
+fi
+print -- "PR request queued to Desktop dispatcher $dispatcher; queue acceptance does not confirm worker setup completion."
