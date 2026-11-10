@@ -21,7 +21,7 @@ fi
 dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-01a11afd-3f31-7292-bcef-4443c2e6836b}"
 prompt='$get-ready '
 prompt+="$pr_url"
-prompt+=$'\n\nWait for input.'
+prompt+=$'\n\nOpen this PR in a new Codex Desktop thread under its saved repository project. Use this dispatcher only to create the new thread; complete get-ready in the new thread, then report readiness and wait for input there. Do not start implementation.'
 
 # Do not use queue --resume: that can resume on a separate daemon. Desktop
 # must own and run this thread so get-ready has its native chat/worktree tools.
