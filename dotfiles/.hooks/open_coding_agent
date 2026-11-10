@@ -21,7 +21,7 @@ fi
 dispatcher="${PR_MONITOR_CODEX_DISPATCHER:-01a11afd-3f31-7292-bcef-4443c2e6836b}"
 prompt='$get-ready '
 prompt+="$pr_url"
-prompt+=$'\n\nOpen this PR in a new Codex Desktop thread under its saved repository project. Use this dispatcher only to create the new thread; complete get-ready in the new thread, then report readiness and wait for input there. Do not start implementation.'
+prompt+=$'\n\nUse the get-ready skill at /Users/robinweston/.agents/skills/get-ready/SKILL.md. First resolve the exact PR head branch and saved parent repository project, inspect live Git worktrees, and search the available Codex chats for one in that project whose actual checkout is on that branch. Match by repository path and live branch state, regardless of chat title; page through chat history when needed. If a suitable chat exists, open that existing chat and return it to the user, preserving any active work. Treat this as a successful handoff and stop. Create a new native worktree chat under the saved parent project only after confirming no suitable existing chat exists and the branch is free. If the branch is occupied without a suitable chat, preserve the checkout and report the blocker. For a new chat, complete get-ready there, report readiness, and wait for input. Keep this dispatcher limited to routing and preparation. Do not start implementation.'
 
 # Do not use queue --resume: that can resume on a separate daemon. Desktop
 # must own and run this thread so get-ready has its native chat/worktree tools.

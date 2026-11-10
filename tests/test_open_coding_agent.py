@@ -20,6 +20,9 @@ class HookTest(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('codex queue --thread test-dispatcher --message $get-ready '+URL,calls)
         self.assertIn('open codex://threads/test-dispatcher',calls)
+        self.assertIn('If a suitable chat exists, open that existing chat',calls)
+        self.assertIn('only after confirming no suitable existing chat exists and the branch is free',calls)
+        self.assertNotIn('Open this PR in a new Codex Desktop thread',calls)
         self.assertNotIn('python3 ',calls)
         self.assertNotIn('--resume',calls)
         self.assertIn('does not confirm',result.stdout)
@@ -29,7 +32,7 @@ class HookTest(unittest.TestCase):
     def test_queue_failure_does_not_open_or_report_success(self):
         result,calls=self.run_hook(queue_status=42)
         self.assertEqual(result.returncode,42)
-        self.assertNotIn('open ',calls);self.assertNotIn('queued',result.stdout)
+        self.assertNotIn('open codex://threads/',calls);self.assertNotIn('queued',result.stdout)
     def test_open_failure_reports_already_queued(self):
         result,calls=self.run_hook(open_status=43)
         self.assertEqual(result.returncode,0)
