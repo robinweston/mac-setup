@@ -1,0 +1,21 @@
+dotfiles/.hooks/open_coding_agent
+  s_c132ae7aff7421::t_0894d1b0d0875c 24
+tests/test_open_coding_agent.py
+  s_c132ae7aff7421::t_977c65c147cc9d 23-25,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f8736b9cc9c3168e8e482c4f9eec6ea9f47587d6",
+  "prompts": {},
+  "sessions": {
+    "s_c132ae7aff7421": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4e2-7d9c-7cd3-b903-19ff4d19f6ef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
