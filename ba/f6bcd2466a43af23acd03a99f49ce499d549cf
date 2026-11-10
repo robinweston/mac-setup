@@ -1,0 +1,19 @@
+dotfiles/.hooks/open_coding_agent
+  s_8aee0cc86a9564::t_09f805f93389c8 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "baf6bcd2466a43af23acd03a99f49ce499d549cf",
+  "prompts": {},
+  "sessions": {
+    "s_8aee0cc86a9564": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c2db-6c66-7603-83c5-0cb6c89b6f74",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Weston <lcfcforever@hotmail.com>"
+    }
+  }
+}
