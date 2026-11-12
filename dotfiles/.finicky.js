@@ -8,6 +8,13 @@ export default {
   },
   handlers: [
     {
+      match: (url) => url.hostname === "lazada.sg" || url.hostname.endsWith(".lazada.sg"),
+      browser: {
+        name: "Brave Browser",
+        profile: "Personal",
+      },
+    },
+    {
       match: (url) => url.hostname === "propertyguru.com.sg" || url.hostname.endsWith(".propertyguru.com.sg"),
       browser: {
         name: "Brave Browser",
